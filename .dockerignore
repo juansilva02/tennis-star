@@ -6,4 +6,4 @@ node_modules
 .env*
 coverage
 *.log
-**/uploads
+apps/api/uploads
