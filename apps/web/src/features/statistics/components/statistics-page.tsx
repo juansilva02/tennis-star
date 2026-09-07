@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Area,
@@ -12,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { ErrorState } from "@/components/feedback/error-state";
+import { MotionState } from "@/components/motion/motion-primitives";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatisticsPeriodFilter } from "@/features/statistics/components/statistics-period-filter";
@@ -59,12 +61,18 @@ export function StatisticsPage() {
         }}
       />
 
-      {statistics.isPending ? (
-        <div className="h-80 animate-pulse rounded-xl bg-muted" />
-      ) : statistics.isError ? (
-        <ErrorState onRetry={() => void statistics.refetch()} />
-      ) : data ? (
-        <>
+      <AnimatePresence initial={false} mode="wait">
+        {statistics.isPending ? (
+          <MotionState key="statistics-loading">
+            <div className="h-80 animate-pulse rounded-xl bg-muted" />
+          </MotionState>
+        ) : statistics.isError ? (
+          <MotionState key="statistics-error">
+            <ErrorState onRetry={() => void statistics.refetch()} />
+          </MotionState>
+        ) : data ? (
+          <MotionState key={"statistics-" + from + "-" + to}>
+            <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Metric
               label="Ingresos netos"
@@ -160,8 +168,10 @@ export function StatisticsPage() {
               </CardContent>
             </Card>
           </div>
-        </>
-      ) : null}
+            </>
+          </MotionState>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

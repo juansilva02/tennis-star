@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { motion, type Variants } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -48,5 +48,43 @@ export function MotionItem({
     <motion.div variants={rise} className={cn("min-w-0", className)}>
       {children}
     </motion.div>
+  );
+}
+
+export function MotionState({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function MotionTableRow({
+  children,
+  className,
+}: HTMLAttributes<HTMLTableRowElement>) {
+  return (
+    <motion.tr
+      layout="position"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+      className={cn("border-b transition-colors hover:bg-muted/35", className)}
+    >
+      {children}
+    </motion.tr>
   );
 }

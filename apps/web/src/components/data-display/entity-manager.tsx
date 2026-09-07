@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit3, Plus, Search, Trash2, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { MotionTableRow } from "@/components/motion/motion-primitives";
 import { EntityForm } from "./entity-form";
 import { getEntities, removeEntity, saveEntity } from "./entity-manager-api";
 import type { Column, EntityRow, Field } from "./entity-manager.types";
@@ -146,8 +148,9 @@ export function EntityManager({
               </TableRow>
             </TableHeader>
             <TableBody>
+              <AnimatePresence initial={false}>
               {rows.map((row) => (
-                <TableRow key={row.id}>
+                <MotionTableRow key={row.id}>
                   {columns.map((c) => (
                     <TableCell
                       key={c.key}
@@ -186,8 +189,9 @@ export function EntityManager({
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>
+                </MotionTableRow>
               ))}
+            </AnimatePresence>
             </TableBody>
           </Table>
         ) : (

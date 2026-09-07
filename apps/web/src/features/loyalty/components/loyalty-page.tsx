@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MotionTableRow } from "@/components/motion/motion-primitives";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 import { adjustLoyaltyPoints, getLoyaltyCustomers } from "../api/loyalty-api";
@@ -130,8 +132,9 @@ export function LoyaltyPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              <AnimatePresence initial={false}>
               {sortedCustomers.map((customer) => (
-                <TableRow key={customer.id}>
+                <MotionTableRow key={customer.id}>
                   <TableCell className="font-medium">{customer.name}</TableCell>
                   <TableCell className="text-muted-foreground">{customer.email}</TableCell>
                   <TableCell className="font-mono font-semibold tabular-nums">
@@ -162,8 +165,9 @@ export function LoyaltyPage() {
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>
+                </MotionTableRow>
               ))}
+            </AnimatePresence>
             </TableBody>
           </Table>
         </div>

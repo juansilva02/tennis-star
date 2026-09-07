@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { HelpCircle, Mail, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,23 @@ export function HelpPage() {
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar en preguntas frecuentes" className="pl-9" />
       </div>
       <div className="space-y-2">
-        {list.map(([question, answer]) => (
-          <details key={question} className="group rounded-xl border bg-card p-5"><summary className="cursor-pointer list-none font-medium">{question}</summary><p className="mt-3 text-sm leading-6 text-muted-foreground">{answer}</p></details>
-        ))}
+        <AnimatePresence initial={false} mode="popLayout">
+          {list.map(([question, answer]) => (
+            <motion.div
+              key={question}
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+            >
+              <details className="group rounded-xl border bg-card p-5">
+                <summary className="cursor-pointer list-none font-medium">{question}</summary>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{answer}</p>
+              </details>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
       <Card><CardContent className="flex items-center gap-4 p-5">
         <div className="grid size-11 place-items-center rounded-full bg-muted"><HelpCircle className="size-5" /></div>

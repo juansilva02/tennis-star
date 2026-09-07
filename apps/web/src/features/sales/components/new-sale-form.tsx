@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "@tanstack/react-query";
 import { Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +21,13 @@ import type {
 import { getErrorMessage } from "@/lib/errors";
 import { money } from "@/lib/utils";
 
+type DraftSaleLine = SaleLineInput & { clientId: string };
+
 const emptyLine: SaleLineInput = { productId: "", quantity: 1 };
+
+function newDraftLine(clientId: string): DraftSaleLine {
+  return { ...emptyLine, clientId };
+}
 const emptyProducts: SaleProduct[] = [];
 const emptyCustomers: SaleCustomer[] = [];
 
@@ -30,7 +37,11 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   const [method, setMethod] = useState<PaymentMethod>("CREDIT_CARD");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<SaleLineInput[]>([emptyLine]);
+  const [items, setItems] = useState<DraftSaleLine[]>(() => [
+    { ...emptyLine, clientId: "initial-line" },
+  ]);
+  const lineIdPrefix = useId();
+  const nextLineId = useRef(0);
   const productList = products.data?.data ?? emptyProducts;
   const customerList = customers.data?.data ?? emptyCustomers;
   const productsById = useMemo(
@@ -77,7 +88,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
         paymentMethod: method,
         shippingAddress: address,
         notes,
-        items,
+        items: items.map(({ clientId: _clientId, ...item }) => item),
       }),
     onSuccess: () => {
       toast.success("Venta registrada");
@@ -98,12 +109,20 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
     }
   }
 
-  function updateLine(index: number, patch: Partial<SaleLineInput>) {
+  function updateLine(clientId: string, patch: Partial<SaleLineInput>) {
     setItems((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...patch } : item,
+      current.map((item) =>
+        item.clientId === clientId ? { ...item, ...patch } : item,
       ),
     );
+  }
+
+  function addLine() {
+    nextLineId.current += 1;
+    setItems((current) => [
+      ...current,
+      newDraftLine(lineIdPrefix + "-" + nextLineId.current),
+    ]);
   }
 
   return (
@@ -144,20 +163,27 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              setItems((current) => [...current, { ...emptyLine }])
-            }
+            onClick={addLine}
           >
             <Plus className="size-4" />
             Agregar
           </Button>
         </div>
         <div className="space-y-2">
-          {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-[1fr_88px_44px] gap-2">
+          <AnimatePresence initial={false}>
+            {items.map((item, index) => (
+              <motion.div
+                key={item.clientId}
+                layout
+                initial={{ opacity: 0, height: 0, y: -6 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+                className="grid grid-cols-[1fr_88px_44px] gap-2 overflow-hidden"
+              >
               <SearchableSelect
                 value={item.productId}
-                onChange={(productId) => updateLine(index, { productId })}
+                onChange={(productId) => updateLine(item.clientId, { productId })}
                 options={productOptions}
                 placeholder="Seleccionar producto"
                 searchPlaceholder="Buscar por SKU, ID o nombre"
@@ -170,7 +196,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
                 min="1"
                 value={item.quantity}
                 onChange={(event) =>
-                  updateLine(index, { quantity: Number(event.target.value) })
+                  updateLine(item.clientId, { quantity: Number(event.target.value) })
                 }
               />
               <Button
@@ -178,15 +204,16 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
                 size="icon"
                 onClick={() =>
                   setItems((current) =>
-                    current.filter((_, itemIndex) => itemIndex !== index),
+                    current.filter((line) => line.clientId !== item.clientId),
                   )
                 }
                 aria-label="Quitar producto"
               >
                 <Trash2 className="size-4" />
               </Button>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
       <label className="block text-sm font-medium">

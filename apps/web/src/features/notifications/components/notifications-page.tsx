@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Bell, Check, Mail, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,8 +24,18 @@ export function NotificationsPage() {
         <Button size="sm" variant={unread ? "default" : "outline"} onClick={() => setUnread(true)}>No leídas</Button>
       </div>
       <div className="space-y-3">
-        {notifications.query.data?.data?.length ? notifications.query.data.data.map((notification) => (
-          <Card key={notification.id} className={!notification.readAt ? "border-emerald-500/40" : ""}>
+        {notifications.query.data?.data?.length ? (
+          <AnimatePresence initial={false} mode="popLayout">
+            {notifications.query.data.data.map((notification) => (
+              <motion.div
+                key={notification.id}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+              >
+                <Card key={notification.id} className={!notification.readAt ? "border-emerald-500/40" : ""}>
             <CardContent className="flex gap-4 p-5">
               <div className="grid size-10 shrink-0 place-items-center rounded-full bg-muted"><Bell className="size-4" /></div>
               <div className="min-w-0 flex-1">
@@ -39,8 +50,11 @@ export function NotificationsPage() {
                 <Button variant="ghost" size="icon" onClick={() => notifications.remove(notification.id)} aria-label="Eliminar"><Trash2 className="size-4" /></Button>
               </div>
             </CardContent>
-          </Card>
-        )) : (
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        ) : (
           <Card><CardContent><EmptyState description="No hay notificaciones para mostrar." className="min-h-40 p-0" /></CardContent></Card>
         )}
       </div>

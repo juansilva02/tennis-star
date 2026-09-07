@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { PageTransition } from "@/components/motion/page-transition";
 import { AppHeader } from "./app-header";
 import { Sidebar } from "./sidebar";
 
@@ -24,7 +25,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </AnimatePresence>
       <AppHeader openMenu={() => setMobile(true)} />
       <main id="contenido" className="p-4 sm:p-6 lg:ml-56 lg:p-8">
-        {children}
+        <Suspense fallback={<div className="min-h-64" aria-hidden="true" />}>
+          <PageTransition>{children}</PageTransition>
+        </Suspense>
       </main>
     </div>
   );

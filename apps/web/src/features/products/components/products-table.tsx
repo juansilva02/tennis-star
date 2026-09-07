@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { Archive, ArchiveRestore, Edit3, ImagePlus } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { MotionTableRow } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -57,8 +59,9 @@ export function ProductsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            <AnimatePresence initial={false}>
             {products.map((product) => (
-              <TableRow key={product.id}>
+              <MotionTableRow key={product.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -121,8 +124,9 @@ export function ProductsTable({
                     </Button>
                   </div>
                 </TableCell>
-              </TableRow>
+              </MotionTableRow>
             ))}
+          </AnimatePresence>
           </TableBody>
         </Table>
       ) : (

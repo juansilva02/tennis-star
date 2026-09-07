@@ -1,9 +1,11 @@
 "use client";
 
 import { Archive, ArchiveRestore, Eye } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { MotionTableRow } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -64,8 +66,9 @@ export function SalesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            <AnimatePresence initial={false}>
             {sales.map((sale) => (
-              <TableRow key={sale.id}>
+              <MotionTableRow key={sale.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
@@ -125,8 +128,9 @@ export function SalesTable({
                     </Button>
                   </div>
                 </TableCell>
-              </TableRow>
+              </MotionTableRow>
             ))}
+          </AnimatePresence>
           </TableBody>
         </Table>
       ) : (
