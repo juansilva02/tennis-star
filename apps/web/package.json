@@ -1,0 +1,49 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src --passWithNoTests",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "latest",
+    "@tanstack/react-query": "latest",
+    "@tanstack/react-table": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "jspdf": "^4.2.1",
+    "lucide-react": "latest",
+    "motion": "12.23.24",
+    "next": "16.3.4",
+    "next-themes": "latest",
+    "papaparse": "latest",
+    "radix-ui": "latest",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-hook-form": "latest",
+    "recharts": "latest",
+    "sonner": "latest",
+    "tailwind-merge": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "latest",
+    "@types/papaparse": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "9.37.0",
+    "eslint-config-next": "16.3.4",
+    "jsdom": "latest",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}
