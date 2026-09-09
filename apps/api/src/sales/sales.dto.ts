@@ -3,8 +3,10 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -19,6 +21,14 @@ export class CreateSaleDto {
   @IsOptional() @IsEnum(PaymentStatus) paymentStatus?: PaymentStatus;
   @IsString() shippingAddress: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() @MaxLength(64) discountCode?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SaleItemDto)
+  items: SaleItemDto[];
+}
+export class PreviewSaleDiscountDto {
+  @IsString() @IsNotEmpty() @MaxLength(64) discountCode: string;
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SaleItemDto)

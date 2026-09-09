@@ -2,6 +2,7 @@ import { api } from "@/lib/api/client";
 import type { ApiResponse, PaginatedResponse } from "@/types/api";
 import type {
   CreateSaleInput,
+  DiscountPreview,
   Sale,
   SaleCustomer,
   SaleProduct,
@@ -35,6 +36,16 @@ export function getSaleProducts() {
 
 export function createSale(input: CreateSaleInput) {
   return api<ApiResponse<Sale>>("/sales", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function previewSaleDiscount(input: {
+  discountCode: string;
+  items: CreateSaleInput["items"];
+}) {
+  return api<ApiResponse<DiscountPreview>>("/sales/discounts/preview", {
     method: "POST",
     body: JSON.stringify(input),
   });

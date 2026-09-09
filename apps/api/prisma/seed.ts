@@ -225,6 +225,7 @@ async function main() {
               ? PaymentStatus.REFUNDED
               : PaymentStatus.PAID,
           paymentMethod: PaymentMethod.CREDIT_CARD,
+          subtotal: total,
           total,
           shippingAddress: "Av. del Libertador 1234, Buenos Aires",
           items: {

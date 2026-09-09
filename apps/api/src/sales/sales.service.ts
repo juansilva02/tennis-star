@@ -3,12 +3,39 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Discount, Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { argentinaDayRange } from "../common/argentina-time";
 import { pageArgs, paged } from "../common/http";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateSaleDto, UpdateSaleDto } from "./sales.dto";
+import {
+  CreateSaleDto,
+  PreviewSaleDiscountDto,
+  UpdateSaleDto,
+} from "./sales.dto";
+
+type PricedSale = {
+  subtotal: Prisma.Decimal;
+  items: {
+    productId: string;
+    productName: string;
+    sku: string;
+    unitPrice: Prisma.Decimal;
+    quantity: number;
+    subtotal: Prisma.Decimal;
+  }[];
+};
+
+export function discountAmountFor(
+  discount: Pick<Discount, "type" | "value">,
+  subtotal: Prisma.Decimal,
+) {
+  const amount =
+    discount.type === "PERCENTAGE"
+      ? subtotal.mul(discount.value).div(100).toDecimalPlaces(2)
+      : discount.value;
+  return amount.greaterThan(subtotal) ? subtotal : amount;
+}
 
 @Injectable()
 export class SalesService {
@@ -61,34 +88,91 @@ export class SalesService {
     ]);
     return paged(data, total, page, pageSize);
   }
-  async create(dto: CreateSaleDto) {
-    if (!dto.items.length)
-      throw new BadRequestException("Agregue al menos un producto");
-    const ids = [...new Set(dto.items.map((i) => i.productId))];
-    return this.prisma.$transaction(async (tx) => {
-      const products = await tx.product.findMany({
-        where: { id: { in: ids }, archivedAt: null },
-      });
-      if (products.length !== ids.length)
-        throw new BadRequestException(
-          "Uno o más productos no están disponibles",
-        );
 
-      const byId = new Map(products.map((product) => [product.id, product]));
-      let total = new Prisma.Decimal(0);
-      const items = dto.items.map((item) => {
-        const product = byId.get(item.productId)!;
-        const subtotal = product.price.mul(item.quantity);
-        total = total.add(subtotal);
-        return {
-          productId: product.id,
-          productName: product.name,
-          sku: product.sku,
-          unitPrice: product.price,
-          quantity: item.quantity,
-          subtotal,
-        };
-      });
+  private async priceItems(
+    tx: Prisma.TransactionClient,
+    requestedItems: CreateSaleDto["items"],
+  ): Promise<PricedSale> {
+    if (!requestedItems.length)
+      throw new BadRequestException("Agregue al menos un producto");
+    const ids = [...new Set(requestedItems.map((item) => item.productId))];
+    const products = await tx.product.findMany({
+      where: { id: { in: ids }, archivedAt: null },
+    });
+    if (products.length !== ids.length)
+      throw new BadRequestException("Uno o más productos no están disponibles");
+
+    const byId = new Map(products.map((product) => [product.id, product]));
+    let subtotal = new Prisma.Decimal(0);
+    const items = requestedItems.map((item) => {
+      const product = byId.get(item.productId)!;
+      const itemSubtotal = product.price.mul(item.quantity);
+      subtotal = subtotal.add(itemSubtotal);
+      return {
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku,
+        unitPrice: product.price,
+        quantity: item.quantity,
+        subtotal: itemSubtotal,
+      };
+    });
+    return { subtotal, items };
+  }
+
+  private async availableDiscount(
+    tx: Prisma.TransactionClient,
+    rawCode: string,
+    now = new Date(),
+  ) {
+    const code = rawCode.trim().toUpperCase();
+    const discount = await tx.discount.findUnique({ where: { code } });
+    if (!discount)
+      throw new BadRequestException("El código de descuento no existe");
+    if (!discount.active)
+      throw new BadRequestException("El código de descuento no está activo");
+    if (discount.startsAt && discount.startsAt > now)
+      throw new BadRequestException(
+        "El código de descuento todavía no está vigente",
+      );
+    if (discount.endsAt && discount.endsAt < now)
+      throw new BadRequestException("El código de descuento está vencido");
+    if (discount.value.lessThan(0))
+      throw new BadRequestException("El descuento tiene una configuración inválida");
+    if (discount.type === "PERCENTAGE" && discount.value.greaterThan(100))
+      throw new BadRequestException(
+        "El descuento tiene una configuración inválida",
+      );
+    return discount;
+  }
+
+  async previewDiscount(dto: PreviewSaleDiscountDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const { subtotal } = await this.priceItems(tx, dto.items);
+      const discount = await this.availableDiscount(tx, dto.discountCode);
+      const discountAmount = discountAmountFor(discount, subtotal);
+      return {
+        code: discount.code,
+        name: discount.name,
+        type: discount.type,
+        value: discount.value,
+        subtotal,
+        discountAmount,
+        total: subtotal.sub(discountAmount),
+      };
+    });
+  }
+
+  async create(dto: CreateSaleDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const { subtotal, items } = await this.priceItems(tx, dto.items);
+      const discount = dto.discountCode
+        ? await this.availableDiscount(tx, dto.discountCode)
+        : null;
+      const discountAmount = discount
+        ? discountAmountFor(discount, subtotal)
+        : new Prisma.Decimal(0);
+      const total = subtotal.sub(discountAmount);
       const settings = await tx.storeSettings.findUnique({
         where: { id: "default" },
       });
@@ -102,6 +186,10 @@ export class SalesService {
           paymentStatus: dto.paymentStatus ?? "UNPAID",
           shippingAddress: dto.shippingAddress,
           notes: dto.notes,
+          subtotal,
+          discountId: discount?.id,
+          discountCode: discount?.code,
+          discountAmount,
           total,
           items: { create: items },
           history: { create: { to: "PENDING", note: "Pedido creado" } },

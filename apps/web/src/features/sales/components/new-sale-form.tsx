@@ -3,16 +3,20 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "@tanstack/react-query";
-import { Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { BadgePercent, Check, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createSale } from "@/features/sales/api/sales-api";
+import {
+  createSale,
+  previewSaleDiscount,
+} from "@/features/sales/api/sales-api";
 import { useSaleOptions } from "@/features/sales/hooks/use-sales";
 import type {
+  DiscountPreview,
   PaymentMethod,
   SaleCustomer,
   SaleLineInput,
@@ -37,6 +41,10 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   const [method, setMethod] = useState<PaymentMethod>("CREDIT_CARD");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] =
+    useState<DiscountPreview | null>(null);
+  const [discountError, setDiscountError] = useState("");
   const [items, setItems] = useState<DraftSaleLine[]>(() => [
     { ...emptyLine, clientId: "initial-line" },
   ]);
@@ -75,7 +83,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
       })),
     [productList],
   );
-  const total = items.reduce(
+  const subtotal = items.reduce(
     (sum, item) =>
       sum + Number(productsById.get(item.productId)?.price ?? 0) * item.quantity,
     0,
@@ -88,6 +96,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
         paymentMethod: method,
         shippingAddress: address,
         notes,
+        discountCode: appliedDiscount?.code,
         items: items.map(({ clientId: _clientId, ...item }) => item),
       }),
     onSuccess: () => {
@@ -96,6 +105,30 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
+  const previewDiscount = useMutation({
+    mutationFn: () =>
+      previewSaleDiscount({
+        discountCode,
+        items: items.map(({ clientId: _clientId, ...item }) => item),
+      }),
+    onMutate: () => setDiscountError(""),
+    onSuccess: ({ data }) => {
+      setDiscountCode(data.code);
+      setAppliedDiscount(data);
+    },
+    onError: (error) => {
+      setAppliedDiscount(null);
+      setDiscountError(getErrorMessage(error));
+    },
+  });
+
+  const total = appliedDiscount ? Number(appliedDiscount.total) : subtotal;
+
+  function clearAppliedDiscount() {
+    setAppliedDiscount(null);
+    setDiscountError("");
+  }
 
   function chooseCustomer(id: string) {
     setCustomerId(id);
@@ -110,6 +143,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   }
 
   function updateLine(clientId: string, patch: Partial<SaleLineInput>) {
+    clearAppliedDiscount();
     setItems((current) =>
       current.map((item) =>
         item.clientId === clientId ? { ...item, ...patch } : item,
@@ -118,6 +152,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   }
 
   function addLine() {
+    clearAppliedDiscount();
     nextLineId.current += 1;
     setItems((current) => [
       ...current,
@@ -179,41 +214,124 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
                 animate={{ opacity: 1, height: "auto", y: 0 }}
                 exit={{ opacity: 0, height: 0, y: -6 }}
                 transition={{ duration: 0.18 }}
-                className="grid grid-cols-[1fr_88px_44px] gap-2 overflow-hidden"
+                className="grid grid-cols-[1fr_88px_44px] gap-2"
               >
-              <SearchableSelect
-                value={item.productId}
-                onChange={(productId) => updateLine(item.clientId, { productId })}
-                options={productOptions}
-                placeholder="Seleccionar producto"
-                searchPlaceholder="Buscar por SKU, ID o nombre"
-                emptyMessage="No se encontraron productos."
-                ariaLabel={`Buscar producto ${index + 1} por SKU, ID o nombre`}
-                className="min-w-0"
-              />
-              <Input
-                type="number"
-                min="1"
-                value={item.quantity}
-                onChange={(event) =>
-                  updateLine(item.clientId, { quantity: Number(event.target.value) })
-                }
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  setItems((current) =>
-                    current.filter((line) => line.clientId !== item.clientId),
-                  )
-                }
-                aria-label="Quitar producto"
-              >
-                <Trash2 className="size-4" />
-              </Button>
+                <SearchableSelect
+                  value={item.productId}
+                  onChange={(productId) =>
+                    updateLine(item.clientId, { productId })
+                  }
+                  options={productOptions}
+                  placeholder="Seleccionar producto"
+                  searchPlaceholder="Buscar por SKU, ID o nombre"
+                  emptyMessage="No se encontraron productos."
+                  ariaLabel={`Buscar producto ${index + 1} por SKU, ID o nombre`}
+                  className="min-w-0"
+                />
+                <Input
+                  type="number"
+                  min="1"
+                  value={item.quantity}
+                  onChange={(event) =>
+                    updateLine(item.clientId, {
+                      quantity: Number(event.target.value),
+                    })
+                  }
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    clearAppliedDiscount();
+                    setItems((current) =>
+                      current.filter(
+                        (line) => line.clientId !== item.clientId,
+                      ),
+                    );
+                  }}
+                  aria-label="Quitar producto"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
               </motion.div>
             ))}
           </AnimatePresence>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label htmlFor="sale-discount-code" className="text-sm font-medium">
+          Código de descuento
+        </label>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <div className="relative min-w-0">
+            <BadgePercent
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              id="sale-discount-code"
+              value={discountCode}
+              onChange={(event) => {
+                setDiscountCode(event.target.value.toUpperCase());
+                clearAppliedDiscount();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && discountCode.trim()) {
+                  event.preventDefault();
+                  previewDiscount.mutate();
+                }
+              }}
+              placeholder="Ingresar código"
+              autoComplete="off"
+              className="pl-9 uppercase"
+              aria-describedby="sale-discount-feedback"
+              aria-invalid={Boolean(discountError)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => previewDiscount.mutate()}
+            disabled={
+              !discountCode.trim() ||
+              !items.length ||
+              items.some((item) => !item.productId || item.quantity < 1) ||
+              previewDiscount.isPending
+            }
+          >
+            {previewDiscount.isPending ? "Validando..." : "Aplicar"}
+          </Button>
+        </div>
+        <div id="sale-discount-feedback" aria-live="polite">
+          {discountError ? (
+            <p className="text-sm text-destructive">{discountError}</p>
+          ) : appliedDiscount ? (
+            <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
+              <p className="flex min-w-0 items-center gap-2 text-emerald-400">
+                <Check aria-hidden="true" className="size-4 shrink-0" />
+                <span className="truncate">
+                  {appliedDiscount.name}: −
+                  {money.format(Number(appliedDiscount.discountAmount))}
+                </span>
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0"
+                onClick={() => {
+                  setDiscountCode("");
+                  clearAppliedDiscount();
+                }}
+                aria-label="Quitar código de descuento"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          ) : discountCode.trim() ? (
+            <p className="text-xs text-muted-foreground">
+              Aplicá el código para validar su vigencia y actualizar el total.
+            </p>
+          ) : null}
         </div>
       </div>
       <label className="block text-sm font-medium">
@@ -234,6 +352,12 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
       </label>
       <div className="flex items-center justify-between border-t pt-4">
         <div>
+          {appliedDiscount && (
+            <p className="text-xs text-muted-foreground">
+              Subtotal {money.format(subtotal)} · Descuento −
+              {money.format(Number(appliedDiscount.discountAmount))}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">Total estimado</p>
           <p className="font-mono text-xl font-semibold">
             {money.format(total)}
@@ -244,7 +368,9 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
           disabled={
             !customerId ||
             !address ||
-            items.some((item) => !item.productId) ||
+            !items.length ||
+            items.some((item) => !item.productId || item.quantity < 1) ||
+            (Boolean(discountCode.trim()) && !appliedDiscount) ||
             create.isPending
           }
         >

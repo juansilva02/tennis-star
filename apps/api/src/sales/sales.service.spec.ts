@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { argentinaDayRange } from "../common/argentina-time";
-import { SalesService } from "./sales.service";
+import { discountAmountFor, SalesService } from "./sales.service";
 
 describe("Resumen diario de ventas", () => {
   it("usa los límites del día de Argentina aunque el servidor esté en UTC", () => {
@@ -44,6 +44,24 @@ describe("Cálculo monetario de ventas", () => {
       .mul(2)
       .add(new Prisma.Decimal("12.25"));
     expect(total.toFixed(2)).toBe("192.05");
+  });
+
+  it("calcula porcentajes con dos decimales", () => {
+    const amount = discountAmountFor(
+      { type: "PERCENTAGE", value: new Prisma.Decimal("15") },
+      new Prisma.Decimal("89.90"),
+    );
+
+    expect(amount.toFixed(2)).toBe("13.49");
+  });
+
+  it("limita un monto fijo al subtotal de la venta", () => {
+    const amount = discountAmountFor(
+      { type: "FIXED", value: new Prisma.Decimal("100") },
+      new Prisma.Decimal("50"),
+    );
+
+    expect(amount.toFixed(2)).toBe("50.00");
   });
 });
 
@@ -90,5 +108,57 @@ describe("Creación transaccional de ventas", () => {
         quantity: 2,
       }),
     );
+  });
+
+  it("valida el código y guarda el descuento calculado por la API", async () => {
+    const create = jest.fn(async ({ data }) => data);
+    const tx = {
+      product: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "product-1",
+            name: "Raqueta Pro",
+            sku: "RAQ-001",
+            price: new Prisma.Decimal("200"),
+          },
+        ]),
+      },
+      discount: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "discount-1",
+          code: "TENIS10",
+          name: "Descuento tenis",
+          type: "PERCENTAGE",
+          value: new Prisma.Decimal("10"),
+          active: true,
+          startsAt: null,
+          endsAt: null,
+        }),
+      },
+      storeSettings: {
+        findUnique: jest.fn().mockResolvedValue({ orderPrefix: "TS" }),
+      },
+      sale: { create },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(tx)),
+    };
+    const service = new SalesService(prisma as never);
+
+    const result: any = await service.create({
+      customerId: "customer-1",
+      paymentMethod: "CREDIT_CARD",
+      shippingAddress: "Av. Corrientes 1234, CABA",
+      discountCode: " tenis10 ",
+      items: [{ productId: "product-1", quantity: 1 }],
+    });
+
+    expect(tx.discount.findUnique).toHaveBeenCalledWith({
+      where: { code: "TENIS10" },
+    });
+    expect(result.subtotal.toFixed(2)).toBe("200.00");
+    expect(result.discountAmount.toFixed(2)).toBe("20.00");
+    expect(result.total.toFixed(2)).toBe("180.00");
+    expect(result.discountCode).toBe("TENIS10");
   });
 });

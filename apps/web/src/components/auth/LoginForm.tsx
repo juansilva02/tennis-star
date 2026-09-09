@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Circle as Facebook, Loader2 } from "lucide-react";
-import { api } from "@/lib/api/client";
-import { getErrorMessage } from "@/lib/errors";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
+import { api } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface LoginFormProps {
     onForgotClick: () => void;
@@ -111,38 +112,7 @@ export function LoginForm({ onForgotClick }: LoginFormProps) {
                 <span className="h-px flex-1 bg-border" />O continuá con
                 <span className="h-px flex-1 bg-border" />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-                <Button
-                    type="button"
-                    variant="outline"
-                    disabled
-                    title="Próximamente"
-                    aria-label="Google, próximamente"
-                >
-                    G
-                </Button>
-                <Button
-                    type="button"
-                    variant="outline"
-                    disabled
-                    title="Próximamente"
-                    aria-label="Facebook, próximamente"
-                >
-                    <Facebook className="size-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="outline"
-                    disabled
-                    title="Próximamente"
-                    aria-label="Apple, próximamente"
-                >
-                    ●
-                </Button>
-            </div>
-            <p className="text-center text-xs text-muted-foreground">
-                Inicio social próximamente
-            </p>
+            <SocialLoginButtons />
         </form>
     );
 }

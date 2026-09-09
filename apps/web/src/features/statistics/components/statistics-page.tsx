@@ -96,7 +96,7 @@ export function StatisticsPage() {
               tone="danger"
             />
           </div>
-          <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+          <div className="mt-[20px] grid gap-4 lg:grid-cols-[1.5fr_1fr]">
             <Card>
               <CardHeader>
                 <CardTitle>Tendencia de ingresos netos</CardTitle>

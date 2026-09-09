@@ -9,7 +9,11 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { CreateSaleDto, UpdateSaleDto } from "./sales.dto";
+import {
+  CreateSaleDto,
+  PreviewSaleDiscountDto,
+  UpdateSaleDto,
+} from "./sales.dto";
 import { SalesService } from "./sales.service";
 @ApiTags("Ventas")
 @Controller("sales")
@@ -23,6 +27,11 @@ export class SalesController {
   }
   @Post() async create(@Body() d: CreateSaleDto) {
     return { data: await this.s.create(d) };
+  }
+  @Post("discounts/preview") async previewDiscount(
+    @Body() d: PreviewSaleDiscountDto,
+  ) {
+    return { data: await this.s.previewDiscount(d) };
   }
   @Patch(":id") async update(
     @Param("id") id: string,

@@ -46,6 +46,9 @@ export interface Sale {
   status: SaleStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
+  subtotal: string;
+  discountCode?: string | null;
+  discountAmount: string;
   total: string;
   shippingAddress: string;
   trackingId?: string | null;
@@ -73,7 +76,18 @@ export interface CreateSaleInput {
   paymentMethod: PaymentMethod;
   shippingAddress: string;
   notes: string;
+  discountCode?: string;
   items: SaleLineInput[];
+}
+
+export interface DiscountPreview {
+  code: string;
+  name: string;
+  type: "PERCENTAGE" | "FIXED";
+  value: string;
+  subtotal: string;
+  discountAmount: string;
+  total: string;
 }
 
 export interface UpdateSaleInput {

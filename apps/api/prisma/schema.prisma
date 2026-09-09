@@ -176,6 +176,11 @@ model Sale {
   status          SaleStatus          @default(PENDING)
   paymentStatus   PaymentStatus       @default(UNPAID)
   paymentMethod   PaymentMethod
+  subtotal        Decimal             @default(0) @db.Decimal(12, 2)
+  discountId      String?
+  discount        Discount?           @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  discountCode    String?
+  discountAmount  Decimal             @default(0) @db.Decimal(12, 2)
   total           Decimal             @db.Decimal(12, 2)
   shippingAddress String
   trackingId      String?
@@ -186,6 +191,7 @@ model Sale {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   @@index([status, createdAt])
+  @@index([discountId])
 }
 
 model SaleItem {
@@ -220,6 +226,7 @@ model Discount {
   startsAt  DateTime?
   endsAt    DateTime?
   active    Boolean      @default(true)
+  sales     Sale[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }

@@ -34,7 +34,7 @@ export class AdminService {
     return this.p.discount.create({
       data: {
         ...d,
-        code: d.code.toUpperCase(),
+        code: d.code.trim().toUpperCase(),
         value: new Prisma.Decimal(d.value),
         startsAt: d.startsAt ? new Date(d.startsAt) : null,
         endsAt: d.endsAt ? new Date(d.endsAt) : null,
@@ -42,11 +42,12 @@ export class AdminService {
     });
   }
   updateDiscount(id: string, d: Partial<DiscountDto>) {
-    const { value, startsAt, endsAt, ...rest } = d;
+    const { code, value, startsAt, endsAt, ...rest } = d;
     return this.p.discount.update({
       where: { id },
       data: {
         ...rest,
+        ...(code !== undefined ? { code: code.trim().toUpperCase() } : {}),
         ...(value !== undefined ? { value: new Prisma.Decimal(value) } : {}),
         ...(startsAt !== undefined
           ? { startsAt: startsAt ? new Date(startsAt) : null }
