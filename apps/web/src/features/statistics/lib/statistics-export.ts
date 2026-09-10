@@ -1,8 +1,9 @@
 import type { StatisticsData } from "../types";
 
 function csvCell(value: string | number) {
-  const text = String(value);
-  return /[;"\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  const raw = String(value);
+  const text = typeof value === "string" && /^\s*[=+\-@\t\r\n]/.test(raw) ? `'${raw}` : raw;
+  return /[;"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
 function csvRow(...values: Array<string | number>) {

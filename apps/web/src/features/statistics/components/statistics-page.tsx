@@ -153,7 +153,7 @@ export function StatisticsPage() {
               <CardContent className="space-y-3">
                 {data.topProducts.map((product, index) => (
                   <div
-                    key={product.name}
+                    key={product.id}
                     className="flex items-center gap-3 text-sm"
                   >
                     <span className="grid size-7 place-items-center rounded-full bg-muted text-xs">

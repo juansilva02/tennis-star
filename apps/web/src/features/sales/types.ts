@@ -66,6 +66,8 @@ export interface TodaySalesSummary {
   to: string;
 }
 
+export type SaleListItem = Omit<Sale, "items" | "history">;
+
 export interface SaleLineInput {
   productId: string;
   quantity: number;

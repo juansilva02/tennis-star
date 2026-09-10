@@ -12,7 +12,7 @@ export function TopProductsCard({ products }: { products: TopProduct[] }) {
         {products.length ? (
           <div className="space-y-4">
             {products.map((product, index) => (
-              <div key={product.productName} className="flex items-center gap-3">
+              <div key={product.productKey} className="flex items-center gap-3">
                 <span className="grid size-7 place-items-center rounded-full bg-muted text-xs font-semibold">{index + 1}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{product.productName}</p>

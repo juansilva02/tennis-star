@@ -1,6 +1,8 @@
 "use client";
+import { invalidateDomain } from "@/lib/api/invalidate-domain";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { Pagination } from "@/components/ui/pagination";
 import { AnimatePresence } from "motion/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Minus, Plus, Search } from "lucide-react";
@@ -31,21 +33,16 @@ interface AdjustmentState {
 export function LoyaltyPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [adjustment, setAdjustment] = useState<AdjustmentState | null>(null);
   const [points, setPoints] = useState("");
   const [reason, setReason] = useState("");
   const customers = useQuery({
-    queryKey: ["loyalty", search],
-    queryFn: () => getLoyaltyCustomers(search),
+    queryKey: ["loyalty", search, page, sortOrder],
+    queryFn: () => getLoyaltyCustomers(search, page, sortOrder),
   });
-  const sortedCustomers = useMemo(
-    () =>
-      [...(customers.data?.data ?? [])].sort((a, b) =>
-        sortOrder === "asc" ? a.points - b.points : b.points - a.points,
-      ),
-    [customers.data?.data, sortOrder],
-  );
+  const sortedCustomers = customers.data?.data ?? [];
   const save = useMutation({
     mutationFn: () => {
       const amount = Math.abs(Number(points));
@@ -58,7 +55,7 @@ export function LoyaltyPage() {
     onSuccess: () => {
       toast.success(adjustment?.mode === "add" ? "Puntos sumados" : "Puntos quitados");
       setAdjustment(null);
-      void queryClient.invalidateQueries({ queryKey: ["loyalty"] });
+      void invalidateDomain(queryClient, "loyalty");
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -85,14 +82,14 @@ export function LoyaltyPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             placeholder="Buscar cliente"
             className="pl-9"
           />
         </label>
         <Select
           value={sortOrder}
-          onValueChange={(value) => setSortOrder(value as SortOrder)}
+          onValueChange={(value) => { setSortOrder(value as SortOrder); setPage(1); }}
           ariaLabel="Ordenar clientes por puntos"
           options={[
             { value: "desc", label: "Más puntos primero" },
@@ -173,6 +170,7 @@ export function LoyaltyPage() {
         </div>
       )}
 
+      <Pagination meta={customers.data?.meta} onPage={setPage} />
       <Dialog open={!!adjustment} onOpenChange={(open) => !open && setAdjustment(null)}>
         <DialogContent>
           <DialogTitle>{isAdding ? "Sumar puntos" : "Quitar puntos"}</DialogTitle>

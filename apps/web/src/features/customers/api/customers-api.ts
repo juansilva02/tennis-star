@@ -1,8 +1,7 @@
-import { api } from "@/lib/api/client";
-import type { ApiResponse } from "@/types/api";
+import { getCatalogOptions } from "@/lib/api/catalog-options";
 
 export interface MembershipOption { id: string; name: string }
 
 export function getMembershipOptions() {
-  return api<ApiResponse<MembershipOption[]>>("/memberships");
+  return getCatalogOptions<MembershipOption>("/memberships");
 }

@@ -1,20 +1,19 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "@tanstack/react-query";
 import { BadgePercent, Check, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SaleCustomerSelect, SaleProductSelect } from "./sale-option-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createSale,
   previewSaleDiscount,
 } from "@/features/sales/api/sales-api";
-import { useSaleOptions } from "@/features/sales/hooks/use-sales";
 import type {
   DiscountPreview,
   PaymentMethod,
@@ -32,12 +31,12 @@ const emptyLine: SaleLineInput = { productId: "", quantity: 1 };
 function newDraftLine(clientId: string): DraftSaleLine {
   return { ...emptyLine, clientId };
 }
-const emptyProducts: SaleProduct[] = [];
-const emptyCustomers: SaleCustomer[] = [];
 
 export function NewSaleForm({ onDone }: { onDone: () => void }) {
-  const { customers, products } = useSaleOptions();
-  const [customerId, setCustomerId] = useState("");
+  const [customer, setCustomer] = useState<SaleCustomer>();
+  const customerId = customer?.id ?? "";
+  const [productsById, setProductsById] = useState(() => new Map<string, SaleProduct>());
+  const discountRevision = useRef(0);
   const [method, setMethod] = useState<PaymentMethod>("CREDIT_CARD");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
@@ -50,39 +49,6 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   ]);
   const lineIdPrefix = useId();
   const nextLineId = useRef(0);
-  const productList = products.data?.data ?? emptyProducts;
-  const customerList = customers.data?.data ?? emptyCustomers;
-  const productsById = useMemo(
-    () => new Map(productList.map((product) => [product.id, product])),
-    [productList],
-  );
-  const customersById = useMemo(
-    () => new Map(customerList.map((customer) => [customer.id, customer])),
-    [customerList],
-  );
-  const customerOptions = useMemo(
-    () =>
-      customerList.map((customer) => ({
-        value: customer.id,
-        label: customer.name,
-        keywords: [
-          customer.id,
-          customer.address ?? "",
-          customer.city ?? "",
-          customer.postalCode ?? "",
-        ],
-      })),
-    [customerList],
-  );
-  const productOptions = useMemo(
-    () =>
-      productList.map((product) => ({
-        value: product.id,
-        label: `${product.name} — ${money.format(Number(product.price))}`,
-        keywords: [product.id, product.sku, product.name],
-      })),
-    [productList],
-  );
   const subtotal = items.reduce(
     (sum, item) =>
       sum + Number(productsById.get(item.productId)?.price ?? 0) * item.quantity,
@@ -107,17 +73,19 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   });
 
   const previewDiscount = useMutation({
-    mutationFn: () =>
+    mutationFn: (_revision: number) =>
       previewSaleDiscount({
         discountCode,
         items: items.map(({ clientId: _clientId, ...item }) => item),
       }),
     onMutate: () => setDiscountError(""),
-    onSuccess: ({ data }) => {
+    onSuccess: ({ data }, revision) => {
+      if (revision !== discountRevision.current) return;
       setDiscountCode(data.code);
       setAppliedDiscount(data);
     },
-    onError: (error) => {
+    onError: (error, revision) => {
+      if (revision !== discountRevision.current) return;
       setAppliedDiscount(null);
       setDiscountError(getErrorMessage(error));
     },
@@ -126,13 +94,13 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
   const total = appliedDiscount ? Number(appliedDiscount.total) : subtotal;
 
   function clearAppliedDiscount() {
+    discountRevision.current += 1;
     setAppliedDiscount(null);
     setDiscountError("");
   }
 
-  function chooseCustomer(id: string) {
-    setCustomerId(id);
-    const customer = customersById.get(id);
+  function chooseCustomer(customer?: SaleCustomer) {
+    setCustomer(customer);
     if (customer) {
       setAddress(
         [customer.address, customer.city, customer.postalCode]
@@ -165,16 +133,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">
           Cliente
-          <SearchableSelect
-            value={customerId}
-            onChange={chooseCustomer}
-            options={customerOptions}
-            placeholder="Seleccionar cliente"
-            searchPlaceholder="Buscar por nombre, ID o dirección"
-            emptyMessage="No se encontraron clientes."
-            ariaLabel="Buscar cliente por nombre, ID o dirección"
-            className="mt-2"
-          />
+          <SaleCustomerSelect selected={customer} onSelect={chooseCustomer} />
         </label>
         <label className="text-sm font-medium">
           Método de pago
@@ -199,6 +158,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
             size="sm"
             variant="outline"
             onClick={addLine}
+            disabled={items.length >= 100}
           >
             <Plus className="size-4" />
             Agregar
@@ -209,27 +169,24 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
             {items.map((item, index) => (
               <motion.div
                 key={item.clientId}
-                layout
-                initial={{ opacity: 0, height: 0, y: -6 }}
-                animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -6 }}
+                layout="position"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.18 }}
                 className="grid grid-cols-[1fr_88px_44px] gap-2"
               >
-                <SearchableSelect
-                  value={item.productId}
-                  onChange={(productId) =>
-                    updateLine(item.clientId, { productId })
-                  }
-                  options={productOptions}
-                  placeholder="Seleccionar producto"
-                  searchPlaceholder="Buscar por SKU, ID o nombre"
-                  emptyMessage="No se encontraron productos."
-                  ariaLabel={`Buscar producto ${index + 1} por SKU, ID o nombre`}
-                  className="min-w-0"
+                <SaleProductSelect
+                  selected={productsById.get(item.productId)}
+                  index={index}
+                  onSelect={(product) => {
+                    if (product) setProductsById((current) => new Map(current).set(product.id, product));
+                    updateLine(item.clientId, { productId: product?.id ?? "" });
+                  }}
                 />
                 <Input
                   type="number"
+                  aria-label={`Cantidad del producto ${index + 1}`}
                   min="1"
                   value={item.quantity}
                   onChange={(event) =>
@@ -276,9 +233,9 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
                 clearAppliedDiscount();
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && discountCode.trim()) {
+                if (event.key === "Enter" && discountCode.trim() && !previewDiscount.isPending) {
                   event.preventDefault();
-                  previewDiscount.mutate();
+                  previewDiscount.mutate(discountRevision.current);
                 }
               }}
               placeholder="Ingresar código"
@@ -290,11 +247,11 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
           </div>
           <Button
             variant="outline"
-            onClick={() => previewDiscount.mutate()}
+            onClick={() => previewDiscount.mutate(discountRevision.current)}
             disabled={
               !discountCode.trim() ||
               !items.length ||
-              items.some((item) => !item.productId || item.quantity < 1) ||
+              items.some((item) => !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000000) ||
               previewDiscount.isPending
             }
           >
@@ -369,7 +326,7 @@ export function NewSaleForm({ onDone }: { onDone: () => void }) {
             !customerId ||
             !address ||
             !items.length ||
-            items.some((item) => !item.productId || item.quantity < 1) ||
+            items.some((item) => !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000000) ||
             (Boolean(discountCode.trim()) && !appliedDiscount) ||
             create.isPending
           }

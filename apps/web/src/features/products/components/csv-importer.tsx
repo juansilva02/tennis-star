@@ -50,6 +50,12 @@ export function CsvImporter({
   const [errors, setErrors] = useState<string[]>([]);
 
   function parse(file: File) {
+    if (file.size > 1024 * 1024) {
+      setRows([]);
+      setErrors([]);
+      toast.error("El CSV no puede superar 1 MB");
+      return;
+    }
     Papa.parse<CsvRow>(file, {
       header: true,
       skipEmptyLines: true,
@@ -64,6 +70,9 @@ export function CsvImporter({
           brands.map((brand) => [brand.name.toLowerCase(), brand.id]),
         );
         const validationErrors: string[] = [];
+        if (result.errors.length) validationErrors.push("El CSV tiene errores de formato.");
+        if (result.data.length > 500) validationErrors.push("Importá hasta 500 productos por archivo.");
+        const seenSkus = new Set<string>();
         const mapped = result.data.map((row, index) => {
           const categoryId = categoryIds.get(
             String(row.category).toLowerCase(),
@@ -74,12 +83,18 @@ export function CsvImporter({
             !row.name ||
             !categoryId ||
             !brandId ||
-            Number.isNaN(Number(row.price))
+            !String(row.price ?? "").trim() ||
+            !Number.isFinite(Number(row.price)) || Number(row.price) < 0 ||
+            !Number.isInteger(Number(row.stock || 0)) || Number(row.stock || 0) < 0 ||
+            !["MEN", "WOMEN", "UNISEX", "KIDS"].includes(row.gender || "UNISEX") ||
+            !["ACTIVE", "DRAFT", "INACTIVE"].includes(row.status || "ACTIVE") ||
+            seenSkus.has(row.sku ?? "")
           ) {
             validationErrors.push(
-              `Fila ${index + 2}: faltan datos o la categoría/marca no existe.`,
+              `Fila ${index + 2}: revisá SKU, precio, stock, estado, género y categoría/marca.`,
             );
           }
+          seenSkus.add(row.sku ?? "");
           return {
             sku: row.sku ?? "",
             name: row.name ?? "",

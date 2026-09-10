@@ -21,7 +21,7 @@ export function useProductFilters() {
     key: K,
     value: ProductFiltersState[K],
   ) {
-    setFilters((current) => ({ ...current, [key]: value }));
+    setFilters((current) => ({ ...current, page: key === "page" ? current.page : 1, [key]: value }));
   }
 
   function clearFilters() {
@@ -29,7 +29,7 @@ export function useProductFilters() {
       ...initialFilters,
       archived: current.archived,
       sort: current.sort,
-      page: current.page,
+      page: 1,
     }));
   }
 

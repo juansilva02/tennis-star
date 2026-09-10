@@ -1,4 +1,5 @@
 "use client";
+import { invalidateDomain } from "@/lib/api/invalidate-domain";
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,14 +46,14 @@ export function ProductsPage() {
         filters.archived ? "Producto restaurado" : "Producto archivado",
       );
       setConfirmId(null);
-      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await invalidateDomain(queryClient, "products");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
   }
 
   function refreshProducts() {
-    void queryClient.invalidateQueries({ queryKey: ["products"] });
+    void invalidateDomain(queryClient, "products");
   }
 
   return (

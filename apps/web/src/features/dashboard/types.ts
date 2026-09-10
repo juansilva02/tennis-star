@@ -15,6 +15,7 @@ export interface DashboardSale {
 }
 
 export interface TopProduct {
+  productKey: string;
   productName: string;
   _sum: { quantity: number | null; subtotal: string | null };
 }

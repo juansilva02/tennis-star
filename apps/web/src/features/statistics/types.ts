@@ -8,5 +8,5 @@ export interface StatisticsData {
   cancelledOrders: number;
   averageTicket: string;
   trend: { date: string; revenue: string }[];
-  topProducts: { name: string; quantity: number }[];
+  topProducts: { id: string; name: string; quantity: number }[];
 }

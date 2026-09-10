@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import {
   getSaleCustomers,
   getSaleProducts,
@@ -22,14 +23,24 @@ export function useTodaySalesSummary() {
   });
 }
 
-export function useSaleOptions() {
-  const customers = useQuery({
-    queryKey: ["customers-sale"],
-    queryFn: getSaleCustomers,
+export function useSaleCustomers(search: string) {
+  const term = useDebouncedValue(search);
+  const result = useInfiniteQuery({
+    queryKey: ["customers-sale", term],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) => getSaleCustomers(term, pageParam, signal),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const products = useQuery({
-    queryKey: ["products-sale"],
-    queryFn: getSaleProducts,
+  return { ...result, searching: search !== term || result.isFetching };
+}
+
+export function useSaleProducts(search: string) {
+  const term = useDebouncedValue(search);
+  const result = useInfiniteQuery({
+    queryKey: ["products-sale", term],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) => getSaleProducts(term, pageParam, signal),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  return { customers, products };
+  return { ...result, searching: search !== term || result.isFetching };
 }

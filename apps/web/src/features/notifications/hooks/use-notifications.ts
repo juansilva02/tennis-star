@@ -2,9 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { deleteNotification, getNotifications, markAllNotificationsRead, setNotificationRead } from "../api/notifications-api";
 
-export function useNotifications(unread: boolean) {
+export function useNotifications(unread: boolean, page: number) {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ["notifications", unread], queryFn: () => getNotifications(unread) });
+  const query = useQuery({ queryKey: ["notifications", unread, page], queryFn: () => getNotifications(unread, page) });
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["notifications"] });
   return {
     query,

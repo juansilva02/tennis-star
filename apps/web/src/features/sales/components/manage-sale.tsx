@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
-import { updateSale } from "@/features/sales/api/sales-api";
+import { getSale, updateSale } from "@/features/sales/api/sales-api";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { ErrorState } from "@/components/feedback/error-state";
 import type {
   PaymentStatus,
   Sale,
@@ -19,7 +21,17 @@ import type {
 import { getErrorMessage } from "@/lib/errors";
 import { dateTime, money } from "@/lib/utils";
 
-export function ManageSale({ sale, onDone }: { sale: Sale; onDone: () => void }) {
+export function ManageSale({ saleId, onDone }: { saleId: string; onDone: () => void }) {
+  const query = useQuery({ queryKey: ["sales", "detail", saleId], queryFn: ({ signal }) => getSale(saleId, signal), staleTime: 0, gcTime: 0, refetchOnWindowFocus: false });
+  if (query.isPending || query.isError) return <>
+    <DialogTitle>Gestionar pedido</DialogTitle>
+    <DialogDescription>Cargando la información actual del pedido.</DialogDescription>
+    {query.isError ? <ErrorState onRetry={() => void query.refetch()} /> : <LoadingState />}
+  </>;
+  return <ManageSaleForm key={saleId} sale={query.data.data} onDone={onDone} />;
+}
+
+function ManageSaleForm({ sale, onDone }: { sale: Sale; onDone: () => void }) {
   const [status, setStatus] = useState<SaleStatus>(sale.status);
   const [payment, setPayment] = useState<PaymentStatus>(sale.paymentStatus);
   const [tracking, setTracking] = useState(sale.trackingId ?? "");
@@ -166,6 +178,7 @@ export function ManageSale({ sale, onDone }: { sale: Sale; onDone: () => void })
             </Button>
             <Button
               variant="success"
+              disabled={save.isPending}
               onClick={() => {
                 setStatus("COMPLETED");
                 save.mutate("COMPLETED");

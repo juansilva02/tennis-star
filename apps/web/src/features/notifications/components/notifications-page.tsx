@@ -7,24 +7,28 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { ErrorState } from "@/components/feedback/error-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { dateTime } from "@/lib/utils";
 import { useNotifications } from "../hooks/use-notifications";
 
 export function NotificationsPage() {
   const [unread, setUnread] = useState(false);
-  const notifications = useNotifications(unread);
+  const [page, setPage] = useState(1);
+  const notifications = useNotifications(unread, page);
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <PageHeader title="Notificaciones" description="Novedades y actividad importante de la tienda.">
         <Button variant="outline" onClick={notifications.markAllRead}><Check className="size-4" />Marcar todas como leídas</Button>
       </PageHeader>
       <div className="flex gap-2">
-        <Button size="sm" variant={!unread ? "default" : "outline"} onClick={() => setUnread(false)}>Todas</Button>
-        <Button size="sm" variant={unread ? "default" : "outline"} onClick={() => setUnread(true)}>No leídas</Button>
+        <Button size="sm" variant={!unread ? "default" : "outline"} onClick={() => { setUnread(false); setPage(1); }}>Todas</Button>
+        <Button size="sm" variant={unread ? "default" : "outline"} onClick={() => { setUnread(true); setPage(1); }}>No leídas</Button>
       </div>
       <div className="space-y-3">
-        {notifications.query.data?.data?.length ? (
+        {notifications.query.isPending ? <LoadingState /> : notifications.query.isError ? <ErrorState onRetry={() => void notifications.query.refetch()} /> : notifications.query.data?.data?.length ? (
           <AnimatePresence initial={false} mode="popLayout">
             {notifications.query.data.data.map((notification) => (
               <motion.div
@@ -58,6 +62,7 @@ export function NotificationsPage() {
           <Card><CardContent><EmptyState description="No hay notificaciones para mostrar." className="min-h-40 p-0" /></CardContent></Card>
         )}
       </div>
+      <Pagination meta={notifications.query.data?.meta} onPage={setPage} />
     </div>
   );
 }

@@ -21,8 +21,8 @@ import { SalesFilters } from "@/features/sales/components/sales-filters";
 import { SalesTable } from "@/features/sales/components/sales-table";
 import { TodaySalesSummary } from "@/features/sales/components/today-sales-summary";
 import { useSales } from "@/features/sales/hooks/use-sales";
-import type { Sale } from "@/features/sales/types";
 import { getErrorMessage } from "@/lib/errors";
+import { invalidateDomain } from "@/lib/api/invalidate-domain";
 
 export function SalesPage() {
   const queryClient = useQueryClient();
@@ -30,13 +30,13 @@ export function SalesPage() {
   const [page, setPage] = useState(1);
   const [hidden, setHidden] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [selected, setSelected] = useState<Sale | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const sales = useSales(search, hidden, page);
 
   function refreshSales() {
-    void queryClient.invalidateQueries({ queryKey: ["sales"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    void invalidateDomain(queryClient, "sales");
   }
 
   async function hide(id: string) {
@@ -67,8 +67,8 @@ export function SalesPage() {
       <SalesFilters
         search={search}
         hidden={hidden}
-        onSearchChange={setSearch}
-        onHiddenChange={setHidden}
+        onSearchChange={(value) => { setSearch(value); setPage(1); }}
+        onHiddenChange={(value) => { setHidden(value); setPage(1); }}
       />
 
       <SalesTable
@@ -77,7 +77,7 @@ export function SalesPage() {
         pending={sales.isPending}
         error={sales.isError}
         onRetry={() => void sales.refetch()}
-        onManage={setSelected}
+        onManage={(sale) => { setSelected(sale.id); setManageOpen(true); }}
         onHide={setConfirmId}
       />
 
@@ -99,17 +99,15 @@ export function SalesPage() {
       </Dialog>
 
       <Dialog
-        open={Boolean(selected)}
-        onOpenChange={(value) => {
-          if (!value) setSelected(null);
-        }}
+        open={manageOpen}
+        onOpenChange={setManageOpen}
       >
         <DialogContent className="max-w-3xl">
           {selected ? (
             <ManageSale
-              sale={selected}
+              saleId={selected}
               onDone={() => {
-                setSelected(null);
+                setManageOpen(false);
                 refreshSales();
               }}
             />

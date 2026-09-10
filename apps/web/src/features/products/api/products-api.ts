@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/client";
+import { getCatalogOptions } from "@/lib/api/catalog-options";
 import type { ApiResponse, PaginatedResponse } from "@/types/api";
 import type {
   Brand,
@@ -27,11 +28,11 @@ export function getProducts(filters: ProductFiltersState) {
 }
 
 export function getCategories() {
-  return api<PaginatedResponse<Category>>("/categories?pageSize=100");
+  return getCatalogOptions<Category>("/categories");
 }
 
 export function getBrands() {
-  return api<PaginatedResponse<Brand>>("/brands?pageSize=100");
+  return getCatalogOptions<Brand>("/brands");
 }
 
 export function saveProduct(payload: ProductPayload, id?: string) {

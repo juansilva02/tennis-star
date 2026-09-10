@@ -16,16 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Sale } from "@/features/sales/types";
+import type { SaleListItem } from "@/features/sales/types";
 import { cn, dateTime, money } from "@/lib/utils";
 
 interface SalesTableProps {
-  sales: Sale[];
+  sales: SaleListItem[];
   hidden: boolean;
   pending: boolean;
   error: boolean;
   onRetry: () => void;
-  onManage: (sale: Sale) => void;
+  onManage: (sale: SaleListItem) => void;
   onHide: (id: string) => void;
 }
 
@@ -78,7 +78,7 @@ export function SalesTable({
                   </div>
                 </TableCell>
                 <TableCell className="font-mono text-xs">
-                  #{sale.orderNumber}
+                  <span className="block max-w-40 truncate" title={sale.orderNumber}>#{sale.orderNumber}</span>
                 </TableCell>
                 <TableCell>
                   <StatusBadge value={sale.status} />

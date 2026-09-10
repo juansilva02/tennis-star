@@ -4,6 +4,7 @@ import type {
   CreateSaleInput,
   DiscountPreview,
   Sale,
+  SaleListItem,
   SaleCustomer,
   SaleProduct,
   TodaySalesSummary,
@@ -17,21 +18,27 @@ export function getSales(search: string, hidden: boolean, page: number) {
     search,
     hidden: String(hidden),
   });
-  return api<PaginatedResponse<Sale>>(`/sales?${query}`);
+  return api<PaginatedResponse<SaleListItem>>(`/sales?${query}`);
+}
+
+export function getSale(id: string, signal?: AbortSignal) {
+  return api<ApiResponse<Sale>>(`/sales/${id}`, { signal });
 }
 
 export function getTodaySalesSummary() {
   return api<ApiResponse<TodaySalesSummary>>("/sales/summary/today");
 }
 
-export function getSaleCustomers() {
-  return api<PaginatedResponse<SaleCustomer>>("/customers?pageSize=100");
+export interface SaleOptionsPage<T> { data: T[]; nextCursor: string | null }
+
+export function getSaleCustomers(search: string, cursor?: string, signal?: AbortSignal) {
+  const query = new URLSearchParams({ search, limit: "20", ...(cursor ? { cursor } : {}) });
+  return api<SaleOptionsPage<SaleCustomer>>(`/sales/options/customers?${query}`, { signal });
 }
 
-export function getSaleProducts() {
-  return api<PaginatedResponse<SaleProduct>>(
-    "/products?pageSize=100&status=ACTIVE",
-  );
+export function getSaleProducts(search: string, cursor?: string, signal?: AbortSignal) {
+  const query = new URLSearchParams({ search, limit: "20", ...(cursor ? { cursor } : {}) });
+  return api<SaleOptionsPage<SaleProduct>>(`/sales/options/products?${query}`, { signal });
 }
 
 export function createSale(input: CreateSaleInput) {
