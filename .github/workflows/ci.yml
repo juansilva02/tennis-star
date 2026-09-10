@@ -25,6 +25,9 @@ jobs:
       ADMIN_EMAIL: ci-admin@example.invalid
       ADMIN_PASSWORD: ci-only-password-not-for-production
       WEB_ORIGIN: http://127.0.0.1:3000
+      # The isolated E2E database uses repeated logins for each browser case.
+      AUTH_LOGIN_IP_LIMIT: 1000
+      AUTH_LOGIN_ACCOUNT_LIMIT: 1000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -44,3 +47,4 @@ jobs:
       - run: pnpm --filter api test:e2e
       - run: pnpm --filter web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm --filter web test:regression

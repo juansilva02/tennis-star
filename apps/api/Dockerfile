@@ -24,5 +24,7 @@ COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/apps/api/package.json ./package.json
+RUN mkdir -p uploads && chown node:node uploads
+USER node
 EXPOSE 4000
 CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/src/main.js"]
