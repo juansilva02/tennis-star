@@ -8,11 +8,11 @@ export function Pagination({
   meta?: { page: number; pageCount: number; total: number };
   onPage: (page: number) => void;
 }) {
-  if (!meta || meta.pageCount <= 1) return null;
+  if (!meta || (meta.pageCount <= 1 && meta.page <= 1)) return null;
   return (
     <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
       <span className="text-muted-foreground">
-        {meta.total} registros · Página {meta.page} de {meta.pageCount}
+        {meta.total} registros · Página {meta.page} de {Math.max(1, meta.pageCount)}
       </span>
       <div className="flex gap-2">
         <Button

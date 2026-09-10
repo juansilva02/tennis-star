@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onForgotClick }: LoginFormProps) {
     const router = useRouter();
+    const client = useQueryClient();
     const [show, setShow] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export function LoginForm({ onForgotClick }: LoginFormProps) {
         setError("");
         const f = new FormData(e.currentTarget);
         try {
-            await api("/auth/login", {
+            const session = await api("/auth/login", {
                 method: "POST",
                 body: JSON.stringify({
                     email: f.get("email"),
@@ -33,6 +35,9 @@ export function LoginForm({ onForgotClick }: LoginFormProps) {
                     rememberMe: f.get("rememberMe") === "on",
                 }),
             });
+            await client.cancelQueries();
+            client.clear();
+            client.setQueryData(["me"], session);
             router.replace("/home");
         } catch (error) {
             setError(getErrorMessage(error));

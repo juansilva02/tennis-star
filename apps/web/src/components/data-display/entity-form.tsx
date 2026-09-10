@@ -13,7 +13,7 @@ type FormValues = Record<string, unknown>;
 export function EntityForm({ fields, initial, busy, onSubmit }: { fields: Field[]; initial: FormValues | null; busy: boolean; onSubmit: (data: FormValues) => void }) {
   const defaults = useMemo(() => Object.fromEntries(fields.map((field) => [
     field.key,
-    field.type === "date" && initial?.[field.key] ? String(initial[field.key]).slice(0, 10) : (initial?.[field.key] ?? (field.type === "boolean" ? true : "")),
+    field.type === "date" && initial?.[field.key] ? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(String(initial[field.key]))) : (initial?.[field.key] ?? (field.type === "boolean" ? true : "")),
   ])), [fields, initial]);
   const { register, control, handleSubmit, formState: { errors } } = useForm<FormValues>({ defaultValues: defaults });
   return (
@@ -24,7 +24,7 @@ export function EntityForm({ fields, initial, busy, onSubmit }: { fields: Field[
         if (field.type === "number") value = Number(value);
         if (field.type === "boolean") value = Boolean(value);
         if (field.type === "tags") value = String(value).split(",").map((item) => item.trim()).filter(Boolean);
-        if (value === "") value = undefined;
+        if (value === "") value = field.required ? undefined : null;
         data[field.key] = value;
       }
       onSubmit(data);

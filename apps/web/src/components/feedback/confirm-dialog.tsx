@@ -2,7 +2,7 @@
 
 import { AlertDialog as AD } from "radix-ui";
 import { Button } from "@/components/ui/button";
-import { motion } from "motion/react";
+
 
 export function ConfirmDialog({
   open,
@@ -24,11 +24,9 @@ export function ConfirmDialog({
   return (
     <AD.Root open={open} onOpenChange={onOpenChange}>
       <AD.Portal>
-        <AD.Overlay asChild>
-          <motion.div className="fixed inset-0 z-50 bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16 }} />
-        </AD.Overlay>
-        <AD.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 outline-none">
-        <motion.div className="rounded-xl border bg-background p-6 shadow-xl" initial={{ opacity: 0, scale: 0.985, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }}>
+        <AD.Overlay className="dialog-overlay fixed inset-0 z-50 bg-black/50" />
+        <AD.Content className="dialog-panel fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 outline-none">
+        <div className="rounded-xl border bg-background p-6 shadow-xl">
           <AD.Title className="text-lg font-semibold">{title}</AD.Title>
           <AD.Description className="mt-2 text-sm leading-6 text-muted-foreground">
             {description}
@@ -46,7 +44,7 @@ export function ConfirmDialog({
               </Button>
             </AD.Action>
           </div>
-        </motion.div>
+        </div>
         </AD.Content>
       </AD.Portal>
     </AD.Root>

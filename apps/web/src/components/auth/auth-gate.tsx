@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getCurrentUser } from "@/features/auth/api/auth-api";
+import { ApiError } from "@/lib/api/client";
+import { ErrorState } from "@/components/feedback/error-state";
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const path = usePathname();
@@ -12,8 +14,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     retry: false,
   });
   useEffect(() => {
-    if (q.isError) router.replace(`/login?next=${encodeURIComponent(path)}`);
-  }, [q.isError, path, router]);
+    if (q.error instanceof ApiError && q.error.status === 401) router.replace(`/login?next=${encodeURIComponent(path)}`);
+  }, [q.error, path, router]);
   if (q.isPending)
     return (
       <div className="grid min-h-dvh place-items-center">
@@ -23,6 +25,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         />
       </div>
     );
-  if (q.isError) return null;
+  if (q.isError) return q.error instanceof ApiError && q.error.status === 401 ? null : <ErrorState message="No se pudo verificar la sesión. Volvé a intentar." onRetry={() => void q.refetch()} />;
   return children;
 }

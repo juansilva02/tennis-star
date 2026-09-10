@@ -1,4 +1,5 @@
 "use client";
+import { invalidateDomain } from "@/lib/api/invalidate-domain";
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ export function EntityManager({
       toast.success(editing ? "Cambios guardados" : "Registro creado");
       setOpen(false);
       setEditing(null);
-      qc.invalidateQueries({ queryKey: [resource] });
+      invalidateDomain(qc, resource);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -86,7 +87,7 @@ export function EntityManager({
           : "Registro eliminado",
       );
       setConfirmRow(null);
-      qc.invalidateQueries({ queryKey: [resource] });
+      invalidateDomain(qc, resource);
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -120,7 +121,7 @@ export function EntityManager({
         {archive && (
           <Button
             variant={showArchived ? "default" : "outline"}
-            onClick={() => setShowArchived(!showArchived)}
+            onClick={() => { setShowArchived(!showArchived); setPage(1); }}
           >
             <ArchiveRestore className="size-4" />
             {showArchived ? "Ver activos" : "Ver archivados"}

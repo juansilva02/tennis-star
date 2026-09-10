@@ -1,7 +1,6 @@
 "use client";
 import { Dialog as D } from "radix-ui";
 import { X } from "lucide-react";
-import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 export const Dialog = D.Root;
 export const DialogTrigger = D.Trigger;
@@ -13,26 +12,16 @@ export function DialogContent({
 }: React.ComponentProps<typeof D.Content>) {
   return (
     <D.Portal>
-      <D.Overlay asChild>
-        <motion.div
-          className="fixed inset-0 z-50 bg-black/50"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.16 }}
-        />
-      </D.Overlay>
+      <D.Overlay className="dialog-overlay fixed inset-0 z-50 bg-black/50" />
       <D.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 outline-none",
+          "dialog-panel fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 outline-none",
           className,
         )}
         {...p}
       >
-        <motion.div
+        <div
           className="max-h-[90dvh] overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
-          initial={{ opacity: 0, scale: 0.985, y: 5 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
         >
           {children}
           <D.Close
@@ -41,7 +30,7 @@ export function DialogContent({
           >
             <X className="size-4" />
           </D.Close>
-        </motion.div>
+        </div>
       </D.Content>
     </D.Portal>
   );
@@ -50,7 +39,7 @@ export const DialogTitle = ({
   className,
   ...p
 }: React.ComponentProps<typeof D.Title>) => (
-  <D.Title className={cn("text-lg font-semibold", className)} {...p} />
+  <D.Title className={cn("break-words pr-8 text-lg font-semibold", className)} {...p} />
 );
 export const DialogDescription = ({
   className,
