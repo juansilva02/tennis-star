@@ -28,16 +28,17 @@ export class CustomersService {
         orderBy: { createdAt: "desc" },
         include: {
           membership: true,
-          loyalty: true,
           _count: { select: { sales: true } },
         },
       }),
       this.prisma.customer.count({ where }),
     ]);
+    const balances = await this.prisma.loyaltyTransaction.groupBy({ by: ["customerId"], where: { customerId: { in: rows.map((row) => row.id) } }, _sum: { points: true } });
+    const points = new Map(balances.map((balance) => [balance.customerId, balance._sum.points ?? 0]));
     return paged(
       rows.map((r) => ({
         ...r,
-        points: r.loyalty.reduce((sum, t) => sum + t.points, 0),
+        points: points.get(r.id) ?? 0,
       })),
       total,
       page,
@@ -71,49 +72,30 @@ export class CustomersService {
       data: { customerId: id, ...dto },
     });
   }
-  loyalty(q: any) {
-    return this.prisma.customer
-      .findMany({
-        where: {
-          archivedAt: null,
-          ...(q.search
-            ? { name: { contains: q.search, mode: "insensitive" } }
-            : {}),
-        },
-        include: { loyalty: { orderBy: { createdAt: "desc" } } },
-        orderBy: { name: "asc" },
-      })
-      .then((data) => ({
-        data: data.map((c) => ({
-          ...c,
-          points: c.loyalty.reduce((s, t) => s + t.points, 0),
-        })),
-        meta: {
-          total: data.length,
-          page: 1,
-          pageSize: data.length,
-          pageCount: 1,
-        },
-      }));
+  async loyalty(q: any) {
+    const { page, pageSize, skip } = pageArgs(q);
+    const term = q.search || "";
+    const search = term ? Prisma.sql`AND (c."name" ILIKE ${'%' + term + '%'} OR c."email" ILIKE ${'%' + term + '%'})` : Prisma.empty;
+    const direction = q.sortOrder === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+    const [data, total] = await Promise.all([
+      this.prisma.$queryRaw<{ id: string; name: string; email: string; points: number }[]>(Prisma.sql`
+        SELECT c."id", c."name", c."email", COALESCE(SUM(l."points"), 0)::float8 AS "points"
+        FROM "Customer" c LEFT JOIN "LoyaltyTransaction" l ON l."customerId" = c."id"
+        WHERE c."archivedAt" IS NULL ${search}
+        GROUP BY c."id" ORDER BY "points" ${direction}, c."id" ASC LIMIT ${pageSize} OFFSET ${skip}
+      `),
+      this.prisma.customer.count({ where: { archivedAt: null, ...(term ? { OR: [{ name: { contains: term, mode: "insensitive" as const } }, { email: { contains: term, mode: "insensitive" as const } }] } : {}) } }),
+    ]);
+    return paged(data, total, page, pageSize);
   }
-  memberships(q: any) {
-    return this.prisma.membership
-      .findMany({
-        where: q.search
-          ? { name: { contains: q.search, mode: "insensitive" } }
-          : {},
-        include: { _count: { select: { customers: true } } },
-        orderBy: { name: "asc" },
-      })
-      .then((data) => ({
-        data,
-        meta: {
-          total: data.length,
-          page: 1,
-          pageSize: data.length,
-          pageCount: 1,
-        },
-      }));
+  async memberships(q: any) {
+    const { page, pageSize, skip } = pageArgs(q);
+    const where: Prisma.MembershipWhereInput = q.search ? { name: { contains: q.search, mode: "insensitive" } } : {};
+    const [data, total] = await Promise.all([
+      this.prisma.membership.findMany({ where, skip, take: pageSize, include: { _count: { select: { customers: true } } }, orderBy: { name: "asc" } }),
+      this.prisma.membership.count({ where }),
+    ]);
+    return paged(data, total, page, pageSize);
   }
   createMembership(dto: MembershipDto) {
     return this.prisma.membership.create({
@@ -131,10 +113,6 @@ export class CustomersService {
     });
   }
   async deleteMembership(id: string) {
-    await this.prisma.customer.updateMany({
-      where: { membershipId: id },
-      data: { membershipId: null },
-    });
     return this.prisma.membership.delete({ where: { id } });
   }
 }

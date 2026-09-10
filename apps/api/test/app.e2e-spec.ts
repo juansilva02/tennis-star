@@ -203,6 +203,7 @@ describe("Tennis Star API (PostgreSQL)", () => {
         customerId: customers.body.data[0].id,
         paymentMethod: "CREDIT_CARD",
         shippingAddress: "Av. Corrientes 1234, CABA",
+        notes: "E2E Playwright API concurrent sale",
         items: [{ productId: product.id, quantity: 2 }],
       })
       .expect(201);
@@ -216,6 +217,57 @@ describe("Tennis Star API (PostgreSQL)", () => {
         quantity: 2,
       }),
     );
+
+    const id = response.body.data.id;
+    await Promise.all([
+      agent.patch(`/api/v1/sales/${id}`).send({ status: "PROCESSING" }).expect(200),
+      agent.patch(`/api/v1/sales/${id}`).send({ status: "SHIPPED" }).expect(200),
+    ]);
+    const detail = await agent.get(`/api/v1/sales/${id}`).expect(200);
+    const changes = detail.body.data.history.filter((entry: { from: string | null }) => entry.from !== null);
+    expect(changes).toHaveLength(2);
+    const first = changes.find((entry: { from: string }) => entry.from === "PENDING");
+    const second = changes.find((entry: { from: string }) => entry.from === first.to);
+    expect(second).toBeDefined();
+    expect(detail.body.data.status).toBe(second.to);
+    const list = await agent.get(`/api/v1/sales?search=${response.body.data.orderNumber}`).expect(200);
+    expect(list.body.data[0].id).toBe(id);
+    expect(list.body.data[0]).not.toHaveProperty("items");
+    expect(list.body.data[0]).not.toHaveProperty("history");
+  });
+
+  it("busca y pagina productos de venta más allá de los primeros cien", async () => {
+    const suffix = Date.now();
+    const categories = await agent.get("/api/v1/categories?pageSize=1").expect(200);
+    const brands = await agent.get("/api/v1/brands?pageSize=1").expect(200);
+    const products = Array.from({ length: 101 }, (_, index) => ({
+      name: `Producto E2E cursor ${suffix}`, sku: `E2E-CURSOR-${suffix}-${index}`,
+      price: 20, stock: 1, gender: "UNISEX", status: "ACTIVE",
+      categoryId: categories.body.data[0].id, brandId: brands.body.data[0].id,
+    }));
+    await agent.post("/api/v1/products/import").send(products).expect(201);
+    const ids = new Set<string>();
+    let cursor: string | null = null;
+    for (let page = 0; page < 3; page++) {
+      const response = await agent.get("/api/v1/sales/options/products").query({ search: `E2E-CURSOR-${suffix}`, limit: 50, ...(cursor ? { cursor } : {}) }).expect(200);
+      expect(response.body.data).toHaveLength(page < 2 ? 50 : 1);
+      for (const row of response.body.data) ids.add(row.id);
+      cursor = response.body.nextCursor;
+    }
+    expect(cursor).toBeNull();
+    expect(ids.size).toBe(101);
+    const found = await agent.get("/api/v1/sales/options/products").query({ search: `E2E-CURSOR-${suffix}-100` }).expect(200);
+    expect(found.body.data).toHaveLength(1);
+    await agent.get("/api/v1/sales/options/products?limit=100000").expect(400);
+  });
+
+  it("revoca una cookie copiada al cerrar la sesión", async () => {
+    const session = request.agent(app.getHttpServer());
+    const login = await session.post("/api/v1/auth/login").send({ email: adminEmail, password: adminPassword }).expect(200);
+    const cookies = login.headers["set-cookie"] as unknown as string[];
+    const cookie = cookies.find((value) => value.startsWith("tennis_session="))!.split(";")[0];
+    await session.post("/api/v1/auth/logout").expect(204);
+    await request(app.getHttpServer()).get("/api/v1/auth/me").set("Cookie", cookie).expect(401);
   });
 
   it("revierte toda la importación si una fila es inválida", async () => {

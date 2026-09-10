@@ -12,6 +12,7 @@ import {
   CreateSaleDto,
   PreviewSaleDiscountDto,
   UpdateSaleDto,
+  SaleOptionsQueryDto,
 } from "./sales.dto";
 
 type PricedSale = {
@@ -40,6 +41,50 @@ export function discountAmountFor(
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
+
+  async customerOptions(q: SaleOptionsQueryDto) {
+    const search = q.search?.trim();
+    const data = await this.prisma.customer.findMany({
+      where: {
+        archivedAt: null,
+        ...(q.cursor ? { id: { gt: q.cursor } } : {}),
+        ...(search ? { OR: [
+          { id: search },
+          ...["name", "email", "address", "city", "postalCode"].map((field) => ({
+            [field]: { contains: search, mode: "insensitive" },
+          })),
+        ] } : {}),
+      },
+      select: { id: true, name: true, email: true, address: true, city: true, postalCode: true },
+      orderBy: { id: "asc" },
+      take: q.limit + 1,
+    });
+    return this.optionPage(data, q.limit);
+  }
+
+  async productOptions(q: SaleOptionsQueryDto) {
+    const search = q.search?.trim();
+    const data = await this.prisma.product.findMany({
+      where: {
+        archivedAt: null, status: "ACTIVE",
+        ...(q.cursor ? { id: { gt: q.cursor } } : {}),
+        ...(search ? { OR: [
+          { id: search },
+          { name: { contains: search, mode: "insensitive" } },
+          { sku: { contains: search, mode: "insensitive" } },
+        ] } : {}),
+      },
+      select: { id: true, name: true, sku: true, price: true },
+      orderBy: { id: "asc" },
+      take: q.limit + 1,
+    });
+    return this.optionPage(data, q.limit);
+  }
+
+  private optionPage<T extends { id: string }>(rows: T[], limit: number) {
+    const data = rows.slice(0, limit);
+    return { data, nextCursor: rows.length > limit ? data.at(-1)!.id : null };
+  }
 
   async todaySummary(now = new Date()) {
     const { from, to } = argentinaDayRange(now);
@@ -77,16 +122,22 @@ export class SalesService {
         where,
         skip,
         take: pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         include: {
-          customer: true,
-          items: true,
-          history: { orderBy: { createdAt: "desc" } },
+          customer: { select: { id: true, name: true, email: true } },
         },
       }),
       this.prisma.sale.count({ where }),
     ]);
     return paged(data, total, page, pageSize);
+  }
+
+  async detail(id: string) {
+    const sale = await this.prisma.sale.findUnique({ where: { id }, include: {
+      customer: true, items: true, history: { orderBy: { createdAt: "desc" } },
+    } });
+    if (!sale) throw new NotFoundException("Pedido no encontrado");
+    return sale;
   }
 
   private async priceItems(
@@ -176,7 +227,7 @@ export class SalesService {
       const settings = await tx.storeSettings.findUnique({
         where: { id: "default" },
       });
-      const orderNumber = `${settings?.orderPrefix ?? "TS"}-${new Date().getFullYear()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+      const orderNumber = `${settings?.orderPrefix ?? "TS"}-${new Date().getFullYear()}-${randomUUID().replaceAll("-", "").toUpperCase()}`;
 
       return tx.sale.create({
         data: {
@@ -199,10 +250,12 @@ export class SalesService {
     });
   }
   async update(id: string, dto: UpdateSaleDto) {
-    const current = await this.prisma.sale.findUnique({ where: { id } });
-    if (!current) throw new NotFoundException();
     const { statusNote, status, ...data } = dto;
     return this.prisma.$transaction(async (tx) => {
+      // Serialize writers before reading the previous status for the history.
+      await tx.$queryRaw`SELECT "id" FROM "Sale" WHERE "id" = ${id} FOR UPDATE`;
+      const current = await tx.sale.findUnique({ where: { id } });
+      if (!current) throw new NotFoundException();
       await tx.sale.update({
         where: { id },
         data: { ...data, ...(status ? { status } : {}) },

@@ -156,6 +156,7 @@ export class CatalogService {
     });
   }
   async importProducts(rows: ProductDto[]) {
+    if (rows.length > 500) throw new BadRequestException("Importá hasta 500 productos por archivo");
     if (!rows.length)
       throw new BadRequestException("El archivo no contiene productos");
     try {

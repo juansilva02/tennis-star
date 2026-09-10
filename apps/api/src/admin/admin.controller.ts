@@ -10,12 +10,13 @@ import {
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { AdminService } from "./admin.service";
-import { DiscountDto, NotificationDto, SettingsDto } from "./admin.dto";
+import { ReportingService } from "./reporting.service";
+import { DiscountDto, NotificationDto, SettingsDto, UpdateDiscountDto, ReadNotificationDto } from "./admin.dto";
 import { Public } from "../common/public.decorator";
 @ApiTags("Administración")
 @Controller()
 export class AdminController {
-  constructor(private s: AdminService) {}
+  constructor(private s: AdminService, private reports: ReportingService) {}
   @Get("discounts") discounts(@Query() q: any) {
     return this.s.discounts(q);
   }
@@ -24,7 +25,7 @@ export class AdminController {
   }
   @Patch("discounts/:id") async ud(
     @Param("id") id: string,
-    @Body() d: Partial<DiscountDto>,
+    @Body() d: UpdateDiscountDto,
   ) {
     return { data: await this.s.updateDiscount(id, d) };
   }
@@ -39,7 +40,7 @@ export class AdminController {
   }
   @Patch("notifications/:id/read") async rn(
     @Param("id") id: string,
-    @Body() d: { read: boolean },
+    @Body() d: ReadNotificationDto,
   ) {
     return { data: await this.s.readNotification(id, d.read) };
   }
@@ -56,15 +57,15 @@ export class AdminController {
     return { data: await this.s.saveSettings(d) };
   }
   @Get("dashboard") async dashboard() {
-    return { data: await this.s.dashboard() };
+    return { data: await this.reports.dashboard() };
   }
   @Get("statistics") async stats(
     @Query("from") f?: string,
     @Query("to") t?: string,
   ) {
-    return { data: await this.s.statistics(f, t) };
+    return { data: await this.reports.statistics(f, t) };
   }
   @Public() @Get("health") health() {
-    return { status: "ok", timestamp: new Date().toISOString() };
+    return this.reports.health();
   }
 }

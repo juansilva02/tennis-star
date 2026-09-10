@@ -8,12 +8,20 @@ import {
   IsString,
   MaxLength,
   Min,
+  Max,
+  ArrayMaxSize,
+  ArrayMinSize,
   ValidateNested,
 } from "class-validator";
 import { PaymentMethod, PaymentStatus, SaleStatus } from "@prisma/client";
 class SaleItemDto {
   @IsString() productId: string;
-  @Type(() => Number) @IsInt() @Min(1) quantity: number;
+  @Type(() => Number) @IsInt() @Min(1) @Max(1000000) quantity: number;
+}
+export class SaleOptionsQueryDto {
+  @IsOptional() @IsString() @MaxLength(120) search?: string;
+  @IsOptional() @IsString() @MaxLength(64) cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) limit = 20;
 }
 export class CreateSaleDto {
   @IsString() customerId: string;
@@ -23,6 +31,7 @@ export class CreateSaleDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsString() @MaxLength(64) discountCode?: string;
   @IsArray()
+  @ArrayMinSize(1) @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => SaleItemDto)
   items: SaleItemDto[];
@@ -30,6 +39,7 @@ export class CreateSaleDto {
 export class PreviewSaleDiscountDto {
   @IsString() @IsNotEmpty() @MaxLength(64) discountCode: string;
   @IsArray()
+  @ArrayMinSize(1) @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => SaleItemDto)
   items: SaleItemDto[];

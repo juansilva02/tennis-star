@@ -13,6 +13,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Gender, ProductStatus } from "@prisma/client";
+import { PartialType } from "@nestjs/swagger";
 
 export class CatalogDto {
   @IsString() @IsNotEmpty() name: string;
@@ -49,3 +50,6 @@ export class ProductImageUploadDto {
   @IsBoolean()
   isPrimary?: boolean = true;
 }
+
+export class UpdateCatalogDto extends PartialType(CatalogDto, { skipNullProperties: false }) {}
+export class UpdateProductDto extends PartialType(ProductDto, { skipNullProperties: false }) {}

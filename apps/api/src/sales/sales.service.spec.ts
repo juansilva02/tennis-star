@@ -162,3 +162,41 @@ describe("Creación transaccional de ventas", () => {
     expect(result.discountCode).toBe("TENIS10");
   });
 });
+
+describe("Búsqueda paginada de opciones", () => {
+  it("devuelve un cursor y sólo los campos comerciales necesarios", async () => {
+    const findMany = jest.fn().mockResolvedValue(Array.from({ length: 21 }, (_, i) => ({ id: `product-${i}`, name: "Raqueta", sku: `SKU-${i}`, price: "20" })));
+    const service = new SalesService({ product: { findMany } } as never);
+    const first = await service.productOptions({ search: "Raqueta", limit: 20 });
+    expect(first.data).toHaveLength(20);
+    expect(first.nextCursor).toBe("product-19");
+    await service.productOptions({ search: "Raqueta", limit: 20, cursor: first.nextCursor! });
+    expect(findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: { gt: "product-19" }, status: "ACTIVE", archivedAt: null }),
+      take: 21, select: { id: true, name: true, sku: true, price: true },
+    }));
+  });
+  it("busca clientes por nombre, email e identidad sin cargar su historial", async () => {
+    const findMany = jest.fn().mockResolvedValue([{ id: "customer-150", name: "Cliente remoto" }]);
+    const service = new SalesService({ customer: { findMany } } as never);
+    const result = await service.customerOptions({ search: "customer-150", limit: 20 });
+    expect(result.data[0].id).toBe("customer-150");
+    expect(result.nextCursor).toBeNull();
+    expect(findMany.mock.calls[0][0].include).toBeUndefined();
+    expect(findMany.mock.calls[0][0].where.OR).toContainEqual({ id: "customer-150" });
+  });
+  it("lee el estado anterior después de obtener el bloqueo", async () => {
+    const events: string[] = [];
+    const tx = {
+      $queryRaw: jest.fn(async () => { events.push("lock"); return []; }),
+      sale: {
+        findUnique: jest.fn(async () => { events.push("read"); return { status: "PROCESSING" }; }),
+        update: jest.fn(async () => events.push("write")),
+      },
+      saleStatusHistory: { create: jest.fn(async () => {}) },
+    };
+    await new SalesService({ $transaction: (fn: (tx: unknown) => unknown) => fn(tx) } as never).update("sale-1", { status: "SHIPPED" });
+    expect(events.slice(0, 3)).toEqual(["lock", "read", "write"]);
+    expect(tx.saleStatusHistory.create).toHaveBeenCalledWith({ data: { saleId: "sale-1", from: "PROCESSING", to: "SHIPPED", note: undefined } });
+  });
+});

@@ -11,6 +11,8 @@ import { resolveUploadDirectory } from "./uploads/image-storage.service";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useBodyParser("json", { limit: "2mb" });
+  if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1);
   app.useStaticAssets(resolveUploadDirectory(), {
     prefix: "/uploads/",
     setHeaders: (response) =>

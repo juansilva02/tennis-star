@@ -8,6 +8,7 @@ import {
   IsString,
   Min,
 } from "class-validator";
+import { PartialType } from "@nestjs/swagger";
 export class CustomerDto {
   @IsString() name: string;
   @IsEmail() email: string;
@@ -29,3 +30,5 @@ export class LoyaltyDto {
   @IsInt() points: number;
   @IsString() reason: string;
 }
+export class UpdateCustomerDto extends PartialType(CustomerDto, { skipNullProperties: false }) {}
+export class UpdateMembershipDto extends PartialType(MembershipDto, { skipNullProperties: false }) {}

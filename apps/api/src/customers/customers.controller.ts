@@ -9,7 +9,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { CustomerDto, LoyaltyDto, MembershipDto } from "./customers.dto";
+import { CustomerDto, LoyaltyDto, MembershipDto, UpdateCustomerDto, UpdateMembershipDto } from "./customers.dto";
 import { CustomersService } from "./customers.service";
 @ApiTags("Clientes y fidelización")
 @Controller()
@@ -23,7 +23,7 @@ export class CustomersController {
   }
   @Patch("customers/:id") async update(
     @Param("id") id: string,
-    @Body() d: Partial<CustomerDto>,
+    @Body() d: UpdateCustomerDto,
   ) {
     return { data: await this.s.update(id, d) };
   }
@@ -50,7 +50,7 @@ export class CustomersController {
   }
   @Patch("memberships/:id") async updateM(
     @Param("id") id: string,
-    @Body() d: Partial<MembershipDto>,
+    @Body() d: UpdateMembershipDto,
   ) {
     return { data: await this.s.updateMembership(id, d) };
   }

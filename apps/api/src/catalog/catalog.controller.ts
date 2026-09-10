@@ -10,11 +10,12 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  ParseArrayPipe,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiTags } from "@nestjs/swagger";
 import { CatalogService } from "./catalog.service";
-import { CatalogDto, ProductDto, ProductImageUploadDto } from "./catalog.dto";
+import { CatalogDto, ProductDto, ProductImageUploadDto, UpdateCatalogDto, UpdateProductDto } from "./catalog.dto";
 
 @ApiTags("Catálogo")
 @Controller()
@@ -28,7 +29,7 @@ export class CatalogController {
   }
   @Patch("categories/:id") async updateCategory(
     @Param("id") id: string,
-    @Body() d: Partial<CatalogDto>,
+    @Body() d: UpdateCatalogDto,
   ) {
     return { data: await this.service.updateCatalog("category", id, d) };
   }
@@ -43,7 +44,7 @@ export class CatalogController {
   }
   @Patch("brands/:id") async updateBrand(
     @Param("id") id: string,
-    @Body() d: Partial<CatalogDto>,
+    @Body() d: UpdateCatalogDto,
   ) {
     return { data: await this.service.updateCatalog("brand", id, d) };
   }
@@ -58,7 +59,7 @@ export class CatalogController {
   }
   @Patch("products/:id") async updateProduct(
     @Param("id") id: string,
-    @Body() d: Partial<ProductDto>,
+    @Body() d: UpdateProductDto,
   ) {
     return { data: await this.service.updateProduct(id, d) };
   }
@@ -68,7 +69,7 @@ export class CatalogController {
   @Post("products/:id/restore") async restore(@Param("id") id: string) {
     return { data: await this.service.archiveProduct(id, true) };
   }
-  @Post("products/import") async import(@Body() rows: ProductDto[]) {
+  @Post("products/import") async import(@Body(new ParseArrayPipe({ items: ProductDto, whitelist: true, forbidNonWhitelisted: true })) rows: ProductDto[]) {
     return { data: await this.service.importProducts(rows) };
   }
   @Post("uploads/products")

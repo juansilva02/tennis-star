@@ -1,4 +1,5 @@
 import { DiscountType, NotificationType } from "@prisma/client";
+import { PartialType } from "@nestjs/swagger";
 import {
   IsBoolean,
   IsDateString,
@@ -29,4 +30,8 @@ export class SettingsDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() address?: string;
   @IsString() orderPrefix: string;
+}
+export class UpdateDiscountDto extends PartialType(DiscountDto, { skipNullProperties: false }) {}
+export class ReadNotificationDto {
+  @IsBoolean() read: boolean;
 }
