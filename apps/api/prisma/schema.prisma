@@ -55,6 +55,23 @@ model User {
   avatarUrl    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  sessions     AuthSession[]
+}
+
+model AuthSession {
+  id        String @id
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginRateLimit {
+  key       String @id
+  count     Int
+  expiresAt DateTime
+  @@index([expiresAt])
 }
 
 model Category {
@@ -99,6 +116,7 @@ model Product {
   updatedAt       DateTime        @updatedAt
   @@index([name])
   @@index([categoryId, brandId, status])
+  @@index([archivedAt, status, id])
 }
 
 model ProductImage {
@@ -120,6 +138,7 @@ model ProductOption {
   productId String
   product   Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
   values    ProductOptionValue[]
+  @@index([productId])
 }
 
 model ProductOptionValue {
@@ -127,6 +146,7 @@ model ProductOptionValue {
   value    String
   optionId String
   option   ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  @@index([optionId])
 }
 
 model Membership {
@@ -157,6 +177,8 @@ model Customer {
   archivedAt   DateTime?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+  @@index([archivedAt, id])
+  @@index([membershipId])
 }
 
 model LoyaltyTransaction {
@@ -166,6 +188,7 @@ model LoyaltyTransaction {
   points     Int
   reason     String
   createdAt  DateTime @default(now())
+  @@index([customerId, createdAt])
 }
 
 model Sale {
@@ -192,6 +215,9 @@ model Sale {
   updatedAt       DateTime            @updatedAt
   @@index([status, createdAt])
   @@index([discountId])
+  @@index([hiddenAt, createdAt, id])
+  @@index([createdAt])
+  @@index([customerId])
 }
 
 model SaleItem {
@@ -205,6 +231,8 @@ model SaleItem {
   unitPrice   Decimal  @db.Decimal(12, 2)
   quantity    Int
   subtotal    Decimal  @db.Decimal(12, 2)
+  @@index([saleId])
+  @@index([productId])
 }
 
 model SaleStatusHistory {
@@ -215,6 +243,7 @@ model SaleStatusHistory {
   to        SaleStatus
   note      String?
   createdAt DateTime   @default(now())
+  @@index([saleId, createdAt])
 }
 
 model Discount {
