@@ -17,6 +17,7 @@ test("el menú móvil es opaco y permanece abierto al navegar", async ({ page })
   await page.getByLabel("Correo electrónico").fill(testAdminEmail);
   await page.getByLabel("Contraseña", { exact: true }).fill(testAdminPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await page.getByRole("button", { name: "Abrir menú" }).click();
 
   const drawer = page.getByTestId("mobile-drawer");
@@ -49,6 +50,7 @@ test("el editor visual de opciones funciona sin desbordar en móvil", async ({
   await page.getByLabel("Correo electrónico").fill(testAdminEmail);
   await page.getByLabel("Contraseña", { exact: true }).fill(testAdminPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await page.goto("/productos");
   await page.getByRole("button", { name: "Nuevo producto" }).click();
 
@@ -76,6 +78,7 @@ test("los filtros de estadísticas se apilan correctamente en móvil", async ({
   await page.getByLabel("Correo electrónico").fill(testAdminEmail);
   await page.getByLabel("Contraseña", { exact: true }).fill(testAdminPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await page.goto("/estadisticas");
 
   const filter = page.getByRole("region", { name: "Período del informe" });
@@ -94,6 +97,7 @@ test("la tabla de puntos conserva el ancho de la página en móvil", async ({ pa
   await page.getByLabel("Correo electrónico").fill(testAdminEmail);
   await page.getByLabel("Contraseña", { exact: true }).fill(testAdminPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await page.goto("/puntos-lealtad");
 
   await expect(page.getByRole("table")).toBeVisible();
@@ -111,6 +115,7 @@ test("el panel de filtros de productos conserva márgenes y espaciado en móvil"
   await page.getByLabel("Correo electrónico").fill(testAdminEmail);
   await page.getByLabel("Contraseña", { exact: true }).fill(testAdminPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await page.goto("/productos");
   await page.getByRole("button", { name: "Filtros", exact: true }).click();
 

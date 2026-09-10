@@ -138,7 +138,7 @@ export function SearchableSelect({
       <AnimatePresence>
       {open && (
         <motion.div className="absolute z-[60] mt-1 max-h-56 w-full origin-top overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md" initial={{ opacity: 0, y: -4, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -2, scale: 0.995 }} transition={{ duration: 0.14 }}>
-          <div id={listId} role="listbox" aria-label={ariaLabel} aria-busy={loading}>
+          <div id={listId} role="listbox" aria-label={ariaLabel} aria-busy={loading} className="bg-popover">
           {!error && filtered.map((option, index) => (
             <button
               id={`${listId}-${index}`}

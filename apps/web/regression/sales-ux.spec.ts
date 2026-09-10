@@ -40,6 +40,7 @@ test("busca opciones remotas y mantiene el producto y precio seleccionados", asy
   const customerRequest = page.waitForRequest((request) => new URL(request.url()).searchParams.get("search") === "cliente-150");
   await customer.fill("cliente-150");
   await customerRequest;
+  expect(await dialog.getByRole("listbox").evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
   await dialog.getByRole("option", { name: /Cliente fuera/ }).click();
   await expect(dialog.getByLabel("Dirección de envío")).toHaveValue("Av. Siempre Viva 123");
   await dialog.getByRole("combobox", { name: "Buscar producto 1 por SKU, ID o nombre" }).fill("SKU-150");
