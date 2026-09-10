@@ -28,8 +28,9 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    const result = await this.auth.login(dto);
+    const result = await this.auth.login(dto, req.ip ?? "unknown");
     res.cookie("tennis_session", result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -68,9 +69,11 @@ export class AuthController {
   async removeAvatar(@Req() req: Request & { user: { sub: string } }) {
     return { data: await this.auth.removeAvatar(req.user.sub) };
   }
-  @Post("logout") @HttpCode(204) logout(
+  @Public() @Post("logout") @HttpCode(204) async logout(
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
+    await this.auth.logout(req.cookies?.tennis_session);
     res.clearCookie("tennis_session", { path: "/" });
   }
   @Public() @Post("forgot-password") @HttpCode(202) forgot(
