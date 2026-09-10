@@ -34,7 +34,7 @@ El repositorio no incluye credenciales de acceso. Antes de ejecutar el seed se d
 - Los precios de una venta se releen en el backend; cada ítem conserva snapshots de nombre, SKU y precio.
 - Productos y clientes se archivan en lugar de eliminarse físicamente.
 - Las ventas se ocultan/restauran, pero no se destruyen.
-- Descuentos y puntos de lealtad se administran, pero no se aplican automáticamente.
+- Los códigos de descuento se validan y aplican en el servidor al crear una venta; los puntos de lealtad se ajustan manualmente.
 - Google, Facebook y Apple se muestran como integraciones futuras, sin OAuth activo.
 
 ## Stack técnico
@@ -186,6 +186,10 @@ pnpm --filter web dev
 - Fechas almacenadas en UTC y presentadas con formato argentino.
 - Validación global con whitelist y errores Prisma normalizados.
 - Autenticación requerida por defecto; login, recuperación y healthcheck son públicos.
+- Las opciones de venta usan `/sales/options/customers` y `/sales/options/products`: búsqueda remota por `search`, paginación por `cursor` y `limit` (20 por defecto, máximo 50), respuesta `{ data, nextCursor }`.
+- El listado de ventas omite ítems e historial; `/sales/:id` devuelve el detalle al abrir un pedido. Cada venta admite entre 1 y 100 ítems, con cantidades enteras de hasta 1.000.000.
+- Los reportes agregan importes y cantidades en PostgreSQL; no cargan todas las ventas e ítems en memoria. Los rankings agrupan por identidad del producto y las fechas usan el día de Argentina.
+- El healthcheck consulta PostgreSQL y devuelve 503 cuando no está disponible.
 
 La especificación interactiva se encuentra en Swagger una vez iniciada la API.
 
@@ -198,6 +202,7 @@ La pantalla Productos permite descargar una plantilla y validar el archivo antes
 - Cada error se informa por fila.
 - La importación queda bloqueada mientras existan filas inválidas.
 - La creación se ejecuta dentro de una transacción.
+- Máximo 500 filas por importación y archivos de 1 MB; el límite JSON de la API es 2 MB. Se rechazan precios negativos, cantidades inválidas, enums desconocidos y SKU duplicados en el archivo.
 
 ## Calidad y pruebas
 
@@ -226,6 +231,22 @@ pnpm test:e2e
 Playwright cubre login, CRUD principal, importación CSV, creación y gestión de ventas, avatar y comportamiento responsive. Los artefactos creados por las pruebas se limpian antes y después de la ejecución para no llenar la base con productos E2E.
 
 El pipeline de CI reproduce el flujo completo sobre PostgreSQL 17: instalación, generación Prisma, lint, typecheck, pruebas, build, migraciones, seed y E2E.
+
+Las regresiones de UX se ejecutan también sin base de datos, con respuestas HTTP simuladas:
+
+```bash
+pnpm --filter web test:regression
+```
+
+Usan Chrome instalado localmente y Chromium en CI. Cubren foco y Escape en el menú móvil, movimiento reducido, búsqueda remota, carga por cursor, filtros, descuentos que llegan tarde y edición de campos vacíos. Las pruebas E2E que usan PostgreSQL deben ejecutarse en una base exclusiva para pruebas.
+
+### Aplicación de las correcciones de auditoría
+
+Antes de arrancar la API actualizada, ejecutar `pnpm db:generate` y `pnpm db:deploy`. Las migraciones `202609100001_sales_query_indexes` y `202609100002_auth_sessions` agregan índices de búsqueda, sesiones revocables y contadores compartidos de acceso. La primera necesita permiso para habilitar `pg_trgm`; la creación de índices puede bloquear escrituras durante la migración, por lo que en bases grandes debe planificarse una ventana de mantenimiento.
+
+Las cookies anteriores a esta actualización requieren iniciar sesión de nuevo. El logout revoca la sesión en PostgreSQL. `JWT_SECRET` debe tener al menos 32 caracteres. Por defecto se admiten 30 intentos por IP y 10 por cuenta cada 15 minutos, incluidos accesos correctos; `AUTH_LOGIN_IP_LIMIT` y `AUTH_LOGIN_ACCOUNT_LIMIT` permiten ajustar esos valores (enteros de 1 a 10000). CI usa 1000 en su base aislada para los accesos repetidos de las pruebas.
+
+Las imágenes siguen en un volumen local: para varias réplicas de API se necesita almacenamiento compartido o migrar a un servicio de objetos. Los contenedores ahora ejecutan la aplicación como `node` (UID/GID 1000); un volumen de imágenes existente debe permitir escritura a ese usuario. La capacidad de ventas debe medirse con pruebas de carga sobre una base representativa: los índices y consultas acotadas no sustituyen esa medición.
 
 ## Despliegue con Docker Compose
 
@@ -277,6 +298,8 @@ Para `tennisstar.zuzudev.pro`, el proxy debe enviar:
 ```
 
 Se deben preservar los headers `Host`, `X-Forwarded-For` y `X-Forwarded-Proto`, habilitar HTTPS y permitir cuerpos de al menos 5 MB para imágenes. Si el reverse proxy se ejecuta dentro de Docker, debe compartir una red Docker con los servicios en lugar de usar `127.0.0.1`.
+
+Compose configura `TRUST_PROXY=1`: la API confía en un salto de proxy. Ese proxy debe sobrescribir los encabezados reenviados recibidos del cliente, y la API no debe exponerse directamente a Internet. En acceso directo local se omite `TRUST_PROXY`.
 
 ## Backup y restauración
 
